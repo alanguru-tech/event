@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#071526">
     <title>event 19/11</title>
-    <link rel="icon" type="image/png" href="icon.ico">
+    <link rel="icon" href="./icon.ico" type="image/x-icon" sizes="any">
+    <link rel="alternate icon" href="./icon.png" type="image/png">
     <style>
         :root {
             --gold: #f6cd78;
@@ -66,27 +67,27 @@
             box-shadow: 0 12px 34px #0003, inset 0 1px #ffffff;
             backface-visibility: hidden;
             transform-style: preserve-3d;
-            animation: card-flip-reveal 1.25s cubic-bezier(.2,.75,.25,1) both;
+            animation: card-flip-reveal 850ms cubic-bezier(.2,.75,.25,1) both;
             animation-delay: var(--delay);
             will-change: transform, opacity;
         }
 
         @keyframes card-flip-reveal {
             0% {
-                opacity: 0;
-                transform: translate3d(var(--from-x), var(--from-y), 0) rotateX(65deg) rotateY(85deg) scale(.72);
+                opacity: .45;
+                transform: rotateY(-90deg) scale(.96);
             }
             38% {
                 opacity: .94;
-                transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
+                transform: rotateY(0) scale(1);
             }
             64% {
                 opacity: .94;
-                transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
+                transform: rotateY(0) scale(1);
             }
             100% {
                 opacity: 0;
-                transform: translate3d(var(--to-x), var(--to-y), 0) rotateX(-25deg) rotateY(-90deg) scale(.92);
+                transform: rotateY(90deg) scale(.96);
             }
         }
 
@@ -678,19 +679,12 @@ body {
                 const card = document.createElement('div');
                 card.className = 'intro-card';
                 const col = i % cols, row = Math.floor(i / cols);
-                const fromLeft = col < cols / 2;
-                const fromTop = row < rows / 2;
-                const offsetX = Math.round(innerWidth * (.35 + Math.random() * .3)) * (fromLeft ? -1 : 1);
-                const offsetY = Math.round(innerHeight * (.35 + Math.random() * .3)) * (fromTop ? -1 : 1);
-                card.style.setProperty('--from-x', `${offsetX}px`);
-                card.style.setProperty('--from-y', `${offsetY}px`);
-                card.style.setProperty('--to-x', `${Math.round(offsetX * -.25)}px`);
-                card.style.setProperty('--to-y', `${Math.round(offsetY * -.25)}px`);
-                card.style.setProperty('--delay', `${(i % 4) * 65 + Math.floor(i / 4) * 45}ms`);
+                // Sweep along the top-left to bottom-right diagonal like the reference arrows.
+                card.style.setProperty('--delay', `${(row + col) * 110}ms`);
                 intro.appendChild(card);
                 cards.push(card);
             }
-            const total = 1250 + 3 * 65 + 2 * 45;
+            const total = 850 + (cols - 1 + rows - 1) * 110;
             setTimeout(() => {
                 document.body.classList.add('revealed');
                 startCelebration();
