@@ -103,30 +103,64 @@
 
         .photo-column {
             position: absolute;
+            inset: 0 auto 0 0;
+            overflow: hidden;
+        }
+
+        .photo-track {
+            position: absolute;
             top: 0;
-            bottom: 0;
-            width: var(--tile-w);
+            left: 0;
+            width: 100%;
+            will-change: transform;
+        }
+
+        .photo-track.moves-up {
+            animation: column-up var(--duration) linear infinite;
+        }
+
+        .photo-track.moves-down {
+            animation: column-down var(--duration) linear infinite;
+        }
+
+        .photo-track-group {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .photo-track-group.photo-track-copy {
+            top: var(--group-height);
         }
 
         .photo-tile {
-            position: absolute;
-            left: 0;
-            width: 100%;
-            height: var(--tile-h);
+            position: relative;
+            flex: 0 0 auto;
             border: 1px solid #102f46;
             border-radius: 17px;
             background: #ffffff24;
             overflow: hidden;
-            box-shadow: 0 3px 14px #0002
+            box-shadow: 0 3px 14px #0002;
         }
 
         .photo-tile img {
+            display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            display: block
+            object-fit: contain;
         }
 
+        @keyframes column-up {
+            to { transform: translate3d(0, var(--travel), 0); }
+        }
+
+        @keyframes column-down {
+            from { transform: translate3d(0, var(--travel), 0); }
+            to { transform: translate3d(0, 0, 0); }
+        }
         canvas {
             position: fixed;
             inset: 0;
@@ -324,7 +358,10 @@ body {
             }
         }
 
+        @media(max-width:600px) { .photo-tile { border-radius: 11px; } }
+
         @media(prefers-reduced-motion:reduce) {
+            .photo-track { animation: none !important; }
 
             *,
             *::before,
@@ -360,7 +397,7 @@ body {
         const ctx = canvas.getContext('2d', { alpha: true });
         const photoWall = document.getElementById('photo-wall');
         let width = 0, height = 0, particles = [], celebrating = false;
-        let photoFiles = [], photoPool = [], photoColumns = [], animationTimer = null;
+        let photoFiles = [], photoPool = [], photoTracks = [], currentColumnCount = 0, serviceWorkerRegistration = null;
 
         function isPhoneLayout() {
             return innerWidth <= 600 || (matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) <= 600);
@@ -378,10 +415,6 @@ body {
         addEventListener('resize', resizeCanvas, { passive: true });
         resizeCanvas();
 
-        function randomItem(items) {
-            return items.length ? items[Math.floor(Math.random() * items.length)] : null;
-        }
-
         function shuffle(items) {
             const result = items.slice();
             for (let i = result.length - 1; i > 0; i--) {
@@ -391,107 +424,98 @@ body {
             return result;
         }
 
-        function setTilePhoto(tile, item) {
-            tile.replaceChildren();
-            tile._photoItem = item;
-            if (!item) return;
-            const img = document.createElement('img');
-            img.alt = '';
-            img.loading = 'lazy';
-            img.decoding = 'async';
-            img.fetchPriority = 'low';
-            img.src = item.src;
-            img.onerror = () => img.remove();
-            tile.appendChild(img);
+        function getLayout() {
+            const phone = isPhoneLayout();
+            const columns = phone ? (innerWidth > innerHeight ? 4 : 3) : 6;
+            const cellWidth = width / columns;
+            const tileWidth = Math.max(70, Math.floor(cellWidth * 0.94));
+            return { phone, columns, cellWidth, tileWidth, gap: Math.max(6, Math.round(cellWidth * 0.035)) };
         }
 
-        function getLayout() {
-            const mobile = isPhoneLayout();
-            const landscapePhone = mobile && innerWidth > innerHeight;
-            const columns = mobile ? (landscapePhone ? 4 : 3) : 6;
-            const cellWidth = width / columns;
-            const tileWidth = Math.max(70, Math.floor(cellWidth * 0.76));
-            const tileHeight = Math.max(105, Math.min(Math.floor(height * 0.19), Math.floor(tileWidth * 1.38)));
-            return { mobile, columns, cellWidth, tileWidth, tileHeight, step: tileHeight + 12 };
+        function makeTrackPhotos(selected, columns) {
+            if (!selected.length) return Array.from({ length: columns }, () => []);
+            return Array.from({ length: columns }, (_, columnIndex) => {
+                const track = selected.slice(columnIndex * 8, columnIndex * 8 + 8);
+                if (track.length >= 8) return track;
+                return Array.from({ length: 8 }, (_, index) => selected[(columnIndex * 8 + index) % selected.length]);
+            });
+        }
+
+        function makeTile(photo, layout) {
+            const tile = document.createElement('div');
+            tile.className = 'photo-tile';
+            tile.style.width = `${layout.tileWidth}px`;
+            tile.style.aspectRatio = `${photo.width} / ${photo.height}`;
+            const img = document.createElement('img');
+            img.alt = '';
+            img.decoding = 'async';
+            img.loading = 'lazy';
+            img.fetchPriority = 'low';
+            img.draggable = false;
+            img.src = photo.src;
+            img.onerror = () => tile.remove();
+            tile.appendChild(img);
+            return tile;
+        }
+
+        function createTrackGroup(photos, layout, groupHeight) {
+            const group = document.createElement('div');
+            group.className = 'photo-track-group';
+            group.style.gap = `${layout.gap}px`;
+            let heightSoFar = 0;
+            while (heightSoFar < height + 80) {
+                for (const photo of photos) {
+                    group.appendChild(makeTile(photo, layout));
+                    heightSoFar += layout.tileWidth * photo.height / photo.width + layout.gap;
+                }
+            }
+            groupHeight.value = heightSoFar - layout.gap;
+            return group;
         }
 
         function buildPhotoWall() {
             const layout = getLayout();
             photoWall.replaceChildren();
-            photoColumns = [];
             document.documentElement.style.setProperty('--tile-w', `${layout.tileWidth}px`);
-            document.documentElement.style.setProperty('--tile-h', `${layout.tileHeight}px`);
-
             for (let columnIndex = 0; columnIndex < layout.columns; columnIndex++) {
+                const photos = photoTracks[columnIndex];
+                if (!photos?.length) continue;
                 const column = document.createElement('div');
                 column.className = 'photo-column';
                 column.style.left = `${columnIndex * layout.cellWidth + (layout.cellWidth - layout.tileWidth) / 2}px`;
-                const direction = columnIndex % 2 === 0 ? -1 : 1;
-                const tiles = [];
-                const slotCount = Math.ceil(height / layout.step) + 2;
-                for (let slot = 0; slot < slotCount; slot++) {
-                    const tile = document.createElement('div');
-                    tile.className = 'photo-tile';
-                    const y = slot * layout.step - layout.step;
-                    tile.style.top = '0px';
-                    tile.style.transform = `translate3d(0,${y}px,0)`;
-                    const photo = photoPool.length ? photoPool[(columnIndex + slot) % photoPool.length] : null;
-                    setTilePhoto(tile, photo);
-                    column.appendChild(tile);
-                    tiles.push({ element: tile, y });
-                }
+                column.style.width = `${layout.tileWidth}px`;
+                const track = document.createElement('div');
+                track.className = `photo-track ${columnIndex % 2 === 0 ? 'moves-up' : 'moves-down'}`;
+                const groupHeight = { value: 0 };
+                const first = createTrackGroup(photos, layout, groupHeight);
+                const second = first.cloneNode(true);
+                second.classList.add('photo-track-copy');
+                track.append(first, second);
+                track.style.setProperty('--group-height', `${groupHeight.value}px`);
+                track.style.setProperty('--travel', `-${groupHeight.value}px`);
+                track.style.height = `${groupHeight.value * 2}px`;
+                track.style.setProperty('--duration', `${Math.max(24, groupHeight.value / 20)}s`);
+                column.appendChild(track);
                 photoWall.appendChild(column);
-                photoColumns.push({ tiles, direction, step: layout.step, tileHeight: layout.tileHeight, cursor: columnIndex });
             }
         }
 
-        function replaceTile(tile, column) {
-            if (!photoPool.length) return;
-            const item = photoPool[column.cursor % photoPool.length];
-            column.cursor++;
-            setTilePhoto(tile, item);
-        }
-
-        function advancePhotoWall() {
-            for (const column of photoColumns) {
-                for (const tile of column.tiles) {
-                    tile.y += column.direction * 0.8;
-                    if (tile.y < -column.tileHeight - 4) {
-                        tile.y += column.tiles.length * column.step;
-                        replaceTile(tile.element, column);
-                    } else if (tile.y > height + 4) {
-                        tile.y -= column.tiles.length * column.step;
-                        replaceTile(tile.element, column);
-                    }
-                    tile.element.style.transform = `translate3d(0,${tile.y}px,0)`;
-                }
+        async function getServiceWorker() {
+            if (!('serviceWorker' in navigator)) return null;
+            if (!serviceWorkerRegistration) {
+                await navigator.serviceWorker.register('./service-worker.js');
+                serviceWorkerRegistration = await navigator.serviceWorker.ready;
+                if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
             }
+            return navigator.serviceWorker.controller || serviceWorkerRegistration.active;
         }
-
-        function beginPhotoMotion() {
-            if (animationTimer) clearInterval(animationTimer);
-            const mobile = isPhoneLayout();
-            animationTimer = setInterval(advancePhotoWall, mobile ? 90 : 55);
-        }
-
-        let resizeTimer;
-        addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                resizeCanvas();
-                buildPhotoWall();
-                beginPhotoMotion();
-            }, 180);
-        }, { passive: true });
 
         async function cacheWithWorker(urls) {
-            if (!('serviceWorker' in navigator)) return 0;
-            const registration = await navigator.serviceWorker.ready;
-            const worker = navigator.serviceWorker.controller || registration.active;
+            const worker = await getServiceWorker();
             if (!worker) return 0;
             return new Promise(resolve => {
                 const channel = new MessageChannel();
-                const timeout = setTimeout(() => { channel.port1.close(); resolve(0); }, 25000);
+                const timeout = setTimeout(() => { channel.port1.close(); resolve(0); }, 90000);
                 channel.port1.onmessage = event => {
                     clearTimeout(timeout);
                     resolve(event.data?.cached || 0);
@@ -501,35 +525,48 @@ body {
             });
         }
 
-        async function warmImages(urls) {
-            let next = 0, loaded = 0;
+        function loadPhotoInfo(items) {
+            let next = 0;
+            const loaded = [];
             async function worker() {
-                while (next < urls.length) {
-                    const url = urls[next++];
-                    await new Promise(resolve => {
-                        const img = new Image();
-                        img.onload = () => { loaded++; resolve(); };
-                        img.onerror = resolve;
-                        img.src = url;
+                while (next < items.length) {
+                    const item = items[next++];
+                    const result = await new Promise(resolve => {
+                        const image = new Image();
+                        image.onload = () => resolve({ ...item, width: image.naturalWidth, height: image.naturalHeight });
+                        image.onerror = () => resolve(null);
+                        image.src = item.src;
                     });
+                    if (result?.width && result?.height) loaded.push(result);
                 }
             }
-            await Promise.all([worker(), worker()]);
-            return loaded;
+            const concurrency = isPhoneLayout() ? 2 : 4;
+            return Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker)).then(() => loaded);
         }
 
-        async function prepareOfflineSupport(urls) {
-            try {
-                if (!('serviceWorker' in navigator)) return await warmImages(urls);
-                await navigator.serviceWorker.register('./service-worker.js');
-                await navigator.serviceWorker.ready;
-                if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
-                let cached = await cacheWithWorker(urls.map(item => new URL(item.src, location.href).href));
-                if (cached < urls.length) cached = Math.max(cached, await warmImages(urls.map(item => item.src)));
-                return cached;
-            } catch (error) {
-                return await warmImages(urls.map(item => item.src));
+        async function configurePhotoTracks(columns) {
+            currentColumnCount = columns;
+            if (!photoFiles.length) { photoTracks = []; buildPhotoWall(); return; }
+            const phone = isPhoneLayout();
+            const cacheColumns = phone ? 4 : 6;
+            const wanted = Math.min(photoFiles.length, Math.max(columns, cacheColumns) * 8);
+            let saved = [];
+            try { saved = JSON.parse(localStorage.getItem('event-photo-pool') || '[]'); } catch (_) { }
+            const previous = saved.filter(src => photoFiles.some(photo => photo.src === src)).map(src => ({ src }));
+            const fresh = shuffle(photoFiles).slice(0, wanted);
+            let freshCached = 0;
+            try { freshCached = await cacheWithWorker(fresh.map(photo => new URL(photo.src, location.href).href)); } catch (_) { }
+            let chosen = freshCached === fresh.length ? fresh : previous.length >= Math.min(wanted, fresh.length) ? previous.slice(0, wanted) : fresh;
+            let measured = await loadPhotoInfo(chosen);
+            if (measured.length < Math.min(wanted, 8) && previous.length && chosen !== previous) {
+                const oldMeasured = await loadPhotoInfo(previous.slice(0, wanted));
+                if (oldMeasured.length > measured.length) measured = oldMeasured;
             }
+            if (!measured.length) { photoTracks = []; buildPhotoWall(); return; }
+            photoPool = measured;
+            photoTracks = makeTrackPhotos(photoPool, columns);
+            try { localStorage.setItem('event-photo-pool', JSON.stringify(photoPool.map(photo => photo.src))); } catch (_) { }
+            buildPhotoWall();
         }
 
         async function loadLocalImageManifest() {
@@ -540,46 +577,31 @@ body {
                 photoFiles = (manifest.images || [])
                     .filter(path => typeof path === 'string' && /\.(jpg|jpeg|png|webp)$/i.test(path))
                     .map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
-
-                const savedPool = JSON.parse(localStorage.getItem('event-photo-pool') || '[]');
-                const previousPool = savedPool.filter(src => photoFiles.some(photo => photo.src === src)).map(src => ({ src }));
-                const newPool = shuffle(photoFiles).slice(0, 8);
-                let cached = 0;
-                try {
-                    if ('serviceWorker' in navigator) {
-                        await navigator.serviceWorker.register('./service-worker.js');
-                        await navigator.serviceWorker.ready;
-                        if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
-                        cached = await cacheWithWorker(newPool.map(item => new URL(item.src, location.href).href));
-                    }
-                } catch (_) { }
-
-                if (cached === newPool.length) {
-                    photoPool = newPool;
-                    localStorage.setItem('event-photo-pool', JSON.stringify(photoPool.map(item => item.src)));
-                } else if (previousPool.length) {
-                    photoPool = previousPool.slice(0, 8);
-                } else {
-                    photoPool = newPool;
-                    await prepareOfflineSupport(photoPool);
-                    localStorage.setItem('event-photo-pool', JSON.stringify(photoPool.map(item => item.src)));
-                }
-                buildPhotoWall();
-                beginPhotoMotion();
+                await configurePhotoTracks(getLayout().columns);
             } catch (error) {
                 console.warn('Could not prepare photo resources.', error);
                 buildPhotoWall();
-                beginPhotoMotion();
             }
         }
+
+        let resizeTimer;
+        addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                resizeCanvas();
+                const columns = getLayout().columns;
+                if (columns !== currentColumnCount && photoFiles.length) configurePhotoTracks(columns);
+                else buildPhotoWall();
+            }, 220);
+        }, { passive: true });
 
         function startCelebration() {
             if (celebrating) return;
             celebrating = true;
-            const count = innerWidth <= 600 ? 28 : 72;
+            const count = isPhoneLayout() ? 20 : 64;
             particles = Array.from({ length: count }, () => ({
                 x: Math.random() * width, y: -Math.random() * height,
-                radius: 2 + Math.random() * 2.5, speed: 1 + Math.random() * 2,
+                radius: 1.5 + Math.random() * 2, speed: 1 + Math.random() * 1.8,
                 angle: Math.random() * 6.28,
                 color: ['#f6cd78', '#fff1c7', '#8db7d9'][Math.floor(Math.random() * 3)]
             }));
@@ -590,10 +612,10 @@ body {
             if (celebrating) {
                 for (const particle of particles) {
                     particle.y += particle.speed;
-                    particle.x += Math.sin(particle.y / 35) * 0.45;
-                    particle.angle += 0.03;
+                    particle.x += Math.sin(particle.y / 35) * 0.4;
+                    particle.angle += 0.025;
                     ctx.fillStyle = particle.color;
-                    ctx.globalAlpha = 0.78;
+                    ctx.globalAlpha = 0.75;
                     ctx.beginPath();
                     ctx.ellipse(particle.x, particle.y, particle.radius, particle.radius * 0.55, particle.angle, 0, Math.PI * 2);
                     ctx.fill();
@@ -611,6 +633,12 @@ body {
 </body>
 
 </html>
+
+
+
+
+
+
 
 
 
