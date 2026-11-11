@@ -34,8 +34,7 @@
             padding: clamp(16px, 4vh, 36px) 20px;
             color: var(--cream);
             font-family: Arial, Helvetica, sans-serif;
-            background: #b30000;
-            transition: background 1.5s ease
+            background: #050c16;
         }
 
         .scene-bg {
@@ -45,6 +44,50 @@
             z-index: 0;
             background: #050c16 url("./background.svg") center/cover no-repeat;
             transition: top 1.5s cubic-bezier(.65, 0, .35, 1)
+        }
+
+        .intro-cards {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: clamp(5px, 1vw, 12px);
+            padding: clamp(5px, 1vw, 12px);
+            perspective: 1100px;
+            pointer-events: none;
+        }
+
+        .intro-card {
+            border: 1px solid #ffffffb8;
+            border-radius: clamp(10px, 2vw, 24px);
+            background: linear-gradient(140deg, #fffffff0, #eaf3f8c9);
+            box-shadow: 0 12px 34px #0003, inset 0 1px #ffffff;
+            backface-visibility: hidden;
+            transform-style: preserve-3d;
+            animation: card-flip-reveal 1.25s cubic-bezier(.2,.75,.25,1) both;
+            animation-delay: var(--delay);
+            will-change: transform, opacity;
+        }
+
+        @keyframes card-flip-reveal {
+            0% {
+                opacity: 0;
+                transform: translate3d(var(--from-x), var(--from-y), 0) rotateX(65deg) rotateY(85deg) scale(.72);
+            }
+            38% {
+                opacity: .94;
+                transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
+            }
+            64% {
+                opacity: .94;
+                transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate3d(var(--to-x), var(--to-y), 0) rotateX(-25deg) rotateY(-90deg) scale(.92);
+            }
         }
 
         body.revealed {
@@ -375,6 +418,7 @@ body {
 
 <body>
     <div class="scene-bg" aria-hidden="true"></div>
+    <div id="intro-cards" class="intro-cards" aria-hidden="true"></div>
     <div id="photo-wall" class="photo-wall" aria-hidden="true"></div>
 <div class="stars" aria-hidden="true"></div>
     <div class="glow" aria-hidden="true"></div><canvas id="confetti" aria-hidden="true"></canvas>
@@ -626,9 +670,37 @@ body {
             requestAnimationFrame(animateConfetti);
         }
 
+        function playIntroCards() {
+            const intro = document.getElementById('intro-cards');
+            const cards = [];
+            const cols = 4, rows = 3;
+            for (let i = 0; i < cols * rows; i++) {
+                const card = document.createElement('div');
+                card.className = 'intro-card';
+                const col = i % cols, row = Math.floor(i / cols);
+                const fromLeft = col < cols / 2;
+                const fromTop = row < rows / 2;
+                const offsetX = Math.round(innerWidth * (.35 + Math.random() * .3)) * (fromLeft ? -1 : 1);
+                const offsetY = Math.round(innerHeight * (.35 + Math.random() * .3)) * (fromTop ? -1 : 1);
+                card.style.setProperty('--from-x', `${offsetX}px`);
+                card.style.setProperty('--from-y', `${offsetY}px`);
+                card.style.setProperty('--to-x', `${Math.round(offsetX * -.25)}px`);
+                card.style.setProperty('--to-y', `${Math.round(offsetY * -.25)}px`);
+                card.style.setProperty('--delay', `${(i % 4) * 65 + Math.floor(i / 4) * 45}ms`);
+                intro.appendChild(card);
+                cards.push(card);
+            }
+            const total = 1250 + 3 * 65 + 2 * 45;
+            setTimeout(() => {
+                document.body.classList.add('revealed');
+                startCelebration();
+                intro.remove();
+            }, total);
+        }
+
         loadLocalImageManifest();
         animateConfetti();
-        setTimeout(() => { document.body.classList.add('revealed'); startCelebration(); }, 1000);
+        playIntroCards();
     </script>
 </body>
 
