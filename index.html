@@ -133,7 +133,7 @@
         }
 
         .photo-track-group.photo-track-copy {
-            top: var(--group-height);
+            top: var(--group-step);
         }
 
         .photo-tile {
@@ -491,9 +491,11 @@ body {
                 const second = first.cloneNode(true);
                 second.classList.add('photo-track-copy');
                 track.append(first, second);
+                const groupStep = groupHeight.value + layout.gap;
                 track.style.setProperty('--group-height', `${groupHeight.value}px`);
-                track.style.setProperty('--travel', `-${groupHeight.value}px`);
-                track.style.height = `${groupHeight.value * 2}px`;
+                track.style.setProperty('--group-step', `${groupStep}px`);
+                track.style.setProperty('--travel', `-${groupStep}px`);
+                track.style.height = `${groupHeight.value * 2 + layout.gap}px`;
                 track.style.setProperty('--duration', `${Math.max(24, groupHeight.value / 20)}s`);
                 column.appendChild(track);
                 photoWall.appendChild(column);
