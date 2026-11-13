@@ -417,8 +417,8 @@ body {
             }
             try {
                 const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
-                    import('https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js'),
-                    import('https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js')
+                    import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js'),
+                    import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js')
                 ]);
                 const app = initializeApp(firebaseConfig);
                 const snapshot = await getDoc(doc(getFirestore(app), 'greetings', code));
