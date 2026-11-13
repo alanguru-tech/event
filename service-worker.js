@@ -1,5 +1,5 @@
-const CACHE_NAME = 'event-19-11-v3';
-const PHOTO_CACHE = 'event-19-11-photos-v3';
+const CACHE_NAME = 'event-19-11-v4';
+const PHOTO_CACHE = 'event-19-11-photos-v4';
 const SHELL_FILES = ['./index.html', './admin.html', './background.svg', './images.json'];
 
 self.addEventListener('install', event => {
