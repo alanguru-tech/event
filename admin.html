@@ -18,8 +18,12 @@
   <p class="muted">Tạo hồ sơ và mã QR riêng. Mỗi QR chỉ chứa mã truy cập ngẫu nhiên, không chứa tên hay ảnh.</p>
   <div class="note">Họ tên và lời chúc được lưu trong Firestore; hồ sơ chỉ lưu đường dẫn ảnh. Ảnh lấy từ GitHub Pages nên công khai. Mỗi QR chỉ chứa mã ngẫu nhiên, không chứa tên hay lời chúc.</div>
   <section id="login">
-    <p>Đăng nhập Google bằng tài khoản quản lý đã được cấp quyền trong Firestore Rules.</p>
-    <button id="sign-in">Đăng nhập quản lý</button>
+    <p>Đăng nhập bằng tài khoản email/mật khẩu đã tạo trong Firebase Authentication.</p>
+    <div class="row">
+      <div class="field"><label for="admin-email">Email quản trị</label><input id="admin-email" type="email" autocomplete="username" placeholder="admin@example.com"></div>
+      <div class="field"><label for="admin-password">Mật khẩu</label><input id="admin-password" type="password" autocomplete="current-password" placeholder="Mật khẩu Firebase"></div>
+    </div>
+    <div class="actions"><button id="sign-in">Đăng nhập quản lý</button><button id="reset-password" class="secondary">Gửi link đặt lại mật khẩu</button></div>
     <button id="sign-out" class="secondary hidden">Đăng xuất</button>
     <span id="account" class="muted"></span>
   </section>
@@ -39,9 +43,9 @@
   <section id="results"></section>
 </main>
 <script type="module">
-  import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
-  import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
-  import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,serverTimestamp,deleteDoc} from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+  import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js';
+  import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js';
+  import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,serverTimestamp,deleteDoc} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
   const config={apiKey:'AIzaSyAL8w7SsKAmjF9_Am_RMXCtldk08Daj5Kk',authDomain:'event-896c1.firebaseapp.com',projectId:'event-896c1',storageBucket:'event-896c1.firebasestorage.app',messagingSenderId:'717683458969',appId:'1:717683458969:web:d60444a971f66e4cb20908'};
   const app=initializeApp(config),auth=getAuth(app),db=getFirestore(app);
@@ -49,14 +53,24 @@
   const say=text=>{status.textContent=text};
   const makeCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 
-  $('sign-in').addEventListener('click',async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){say('Đăng nhập chưa thành công: '+e.message)}});
+  $('sign-in').addEventListener('click',async()=>{
+    const email=$('admin-email').value.trim(),password=$('admin-password').value;
+    if(!email||!password)return say('Nhập email và mật khẩu quản trị.');
+    try{await signInWithEmailAndPassword(auth,email,password);$('admin-password').value=''}
+    catch(e){say(e.code==='auth/invalid-credential'?'Email hoặc mật khẩu không đúng.':'Đăng nhập chưa thành công: '+e.message)}
+  });
+  $('reset-password').addEventListener('click',async()=>{
+    const email=$('admin-email').value.trim();if(!email)return say('Nhập email quản trị trước để nhận link đặt lại mật khẩu.');
+    try{await sendPasswordResetEmail(auth,email);say('Đã gửi email đặt lại mật khẩu. Kiểm tra hộp thư của tài khoản quản trị.')}
+    catch(e){say('Không gửi được link đặt lại mật khẩu: '+e.message)}
+  });
   $('sign-out').addEventListener('click',()=>signOut(auth));
   onAuthStateChanged(auth,user=>{
     const allowed=!!user;
     $('editor').classList.toggle('hidden',!allowed);
     $('sign-in').classList.toggle('hidden',allowed);
     $('sign-out').classList.toggle('hidden',!allowed);
-    $('account').textContent=user?`Đã đăng nhập: ${user.email||user.uid}`:'';
+    $('account').textContent=user?`Đã đăng nhập: ${user.email||''} · UID: ${user.uid}`:'';
     if(allowed)loadCabinet();else $('results').replaceChildren();
   });
 
