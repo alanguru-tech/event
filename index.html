@@ -207,24 +207,6 @@
             text-transform: uppercase
         }
 
-        .symbol {
-            margin: 30px auto 20px;
-            width: 92px;
-            height: 92px;
-            display: grid;
-            place-items: center;
-            border-radius: 50%;
-            border: 1px solid #f6cd7870;
-            background: radial-gradient(circle, #f6cd7820, #f6cd7805 70%);
-            color: var(--gold);
-            box-shadow: 0 0 38px #f6cd781c
-        }
-
-        .symbol svg {
-            width: 48px;
-            height: 48px
-        }
-
         h1 {
             margin: 0;
             font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
@@ -294,17 +276,6 @@ body {
                 padding: 8px 12px
             }
 
-            .symbol {
-                width: 72px;
-                height: 72px;
-                margin: 22px auto 18px
-            }
-
-            .symbol svg {
-                width: 40px;
-                height: 40px
-            }
-
             h1 {
                 font-size: clamp(32px, 9vw, 44px)
             }
@@ -339,10 +310,6 @@ body {
             main {
                 padding-top: 26px;
                 padding-bottom: 26px
-            }
-
-            .symbol {
-                margin: 16px auto 12px
             }
 
             .divider {
@@ -383,11 +350,6 @@ body {
         <figure id="person-photo-wrap" hidden style="margin:24px auto 16px;max-width:240px">
             <img id="person-photo" alt="Ảnh người nhận lời chúc" style="display:block;width:100%;max-height:280px;object-fit:cover;border-radius:20px;border:1px solid #f6cd7855;box-shadow:0 12px 32px #0005">
         </figure>
-        <div class="symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor"
-                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="20" cy="28" r="12" />
-                <path d="M28.5 19.5 40 8m-9 0h9v9" />
-            </svg></div>
         <h1 id="greeting-title">Ngày Quốc tế<span>Nam giới</span></h1>
         <p class="message" id="greeting-message">Chúc những người đàn ông luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được
             thật nhiều yêu thương mỗi ngày.</p>
@@ -432,8 +394,13 @@ body {
                 document.getElementById('greeting-extra').textContent = person.extra || 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.';
                 if (person.photoPath && isGitImagePath(person.photoPath)) {
                     const photo = document.getElementById('person-photo');
-                    photo.onload = () => { document.getElementById('person-photo-wrap').hidden = false; };
-                    photo.onerror = () => console.warn('Không tìm thấy ảnh GitHub:', person.photoPath);
+                    const photoWrap = document.getElementById('person-photo-wrap');
+                    photo.onload = () => { photoWrap.hidden = false; };
+                    photo.onerror = () => {
+                        photoWrap.hidden = true;
+                        showGreetingError(`Không tải được ảnh “${person.photoPath}”. Kiểm tra tệp này đã có trên GitHub Pages chưa.`);
+                        console.warn('Không tìm thấy ảnh GitHub:', person.photoPath);
+                    };
                     photo.src = './' + person.photoPath.split('/').map(encodeURIComponent).join('/');
                 }
                 if (person.title) document.querySelector('.badge').textContent = person.title;
