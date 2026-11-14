@@ -1,6 +1,6 @@
-const CACHE_NAME = 'event-19-11-v7';
+const CACHE_NAME = 'event-19-11-v8';
 const PHOTO_CACHE = 'event-19-11-photos-v5';
-const SHELL_FILES = ['./index.html', './admin.html', './background.svg', './images.json'];
+const SHELL_FILES = ['./index.html', './admin.html', './preview-vu-tru-lo-den.html', './background.svg', './images.json'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -54,7 +54,7 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   const requestUrl = new URL(request.url);
   const isPhoto = requestUrl.pathname.includes('/images/');
-  const isAppFile = requestUrl.pathname.endsWith('/images.json') || requestUrl.pathname.endsWith('/background.svg') || requestUrl.pathname.endsWith('/index.html');
+  const isAppFile = requestUrl.pathname.endsWith('/images.json') || requestUrl.pathname.endsWith('/background.svg') || requestUrl.pathname.endsWith('/index.html') || requestUrl.pathname.endsWith('/preview-vu-tru-lo-den.html');
   if (!isPhoto && !isAppFile && request.mode !== 'navigate') return;
 
   event.respondWith((async () => {
