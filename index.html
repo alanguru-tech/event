@@ -128,6 +128,48 @@
             transform: translate(-50%, -50%) rotateX(calc(70deg + var(--orbit-pitch, 0deg))) rotateY(var(--orbit-yaw, 0deg)) rotateZ(22deg)
         }
 
+        .black-hole {
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            top: 50%;
+            width: min(44vmin, 500px);
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            isolation: isolate;
+            background: radial-gradient(circle, #000 0 34%, #03040b 36% 46%, transparent 48%);
+            filter: drop-shadow(0 0 30px #f0a64c4a);
+            pointer-events: none
+        }
+
+        .black-hole::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            inset: 18% -30%;
+            border-radius: 50%;
+            background: conic-gradient(from 15deg, transparent 0 8%, #9ad0ff 12%, #b589ff 22%, #ffbe70 33%, #fff2c3 39%, #d57aff 51%, #647dff 62%, #ffb55e 76%, transparent 88% 100%);
+            filter: blur(9px);
+            opacity: .86;
+            transform: rotateX(72deg) rotateZ(-24deg);
+            box-shadow: 0 0 28px #eea4ff70;
+            animation: black-hole-disk 18s linear infinite
+        }
+
+        .black-hole::after {
+            content: "";
+            position: absolute;
+            inset: 19%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 42% 38%, #070912 0 40%, #000 73%);
+            box-shadow: 0 0 26px 9px #050611, inset 0 0 20px #36405c34
+        }
+
+        @keyframes black-hole-disk {
+            to { transform: rotateX(72deg) rotateZ(336deg) }
+        }
+
         .photo-tile {
             position: absolute;
             left: 50%;
@@ -345,6 +387,7 @@ body {
         @media(max-width:600px) {
             .photo-wall::before { width: 100vmin; }
             .photo-wall::after { width: 66vmin; }
+            .black-hole { width: min(43vmin, 230px); }
         }
 
         @media(prefers-reduced-motion:reduce) {
@@ -363,6 +406,7 @@ body {
 <body>
     <div class="scene-bg" aria-hidden="true"></div>
     <div id="photo-wall" class="photo-wall" aria-hidden="true"></div>
+    <div class="black-hole" aria-hidden="true"></div>
 <div class="stars" aria-hidden="true"></div>
     <div class="glow" aria-hidden="true"></div><canvas id="confetti" aria-hidden="true"></canvas>
     <main>
@@ -392,7 +436,6 @@ body {
             const code = new URLSearchParams(location.search).get('id');
             if (!code) return;
             document.body.classList.add('personal-view');
-            document.getElementById('photo-wall').hidden = true;
             if (!/^[a-f0-9]{32}$/.test(code)) {
                 showGreetingError('Mã QR không hợp lệ. Vui lòng quét lại mã được gửi cho bạn.');
                 return;
@@ -540,6 +583,7 @@ body {
                 }
             }
             updateOrbitPositions(orbitElapsed);
+            startOrbitAnimation();
         }
 
         let orbitElapsed = 0, orbitLastTime = 0, orbitFrameId = 0;
@@ -769,11 +813,7 @@ body {
         }
 
         animateConfetti();
-        if (new URLSearchParams(location.search).has('id')) {
-            photoWall.hidden = true;
-        } else {
-            loadLocalImageManifest();
-        }
+        loadLocalImageManifest();
         document.body.classList.add('revealed');
         startCelebration();
         startOrbitAnimation();
