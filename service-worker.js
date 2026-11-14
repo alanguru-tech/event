@@ -1,5 +1,5 @@
-const CACHE_NAME = 'event-19-11-v4';
-const PHOTO_CACHE = 'event-19-11-photos-v4';
+const CACHE_NAME = 'event-19-11-v7';
+const PHOTO_CACHE = 'event-19-11-photos-v5';
 const SHELL_FILES = ['./index.html', './admin.html', './background.svg', './images.json'];
 
 self.addEventListener('install', event => {
@@ -34,14 +34,14 @@ self.addEventListener('message', event => {
       while (next < urls.length) {
         const url = urls[next++];
         try {
-          const existing = await cache.match(url);
-          if (existing) { cached++; continue; }
-          const response = await fetch(url);
+          const response = await fetch(url, { cache: 'no-cache' });
           if (response.ok && response.type !== 'opaque') {
             await cache.put(url, response.clone());
             cached++;
+          } else if (await cache.match(url)) {
+            cached++;
           }
-        } catch (_) { }
+        } catch (_) { if (await cache.match(url)) cached++; }
       }
     }
     await Promise.all([worker(), worker()]);
@@ -61,9 +61,8 @@ self.addEventListener('fetch', event => {
     const cacheName = isPhoto ? PHOTO_CACHE : CACHE_NAME;
     const cache = await caches.open(cacheName);
     const cached = await cache.match(request, { ignoreSearch: true });
-    if (isPhoto && cached) return cached;
     try {
-      const response = await fetch(request);
+      const response = await fetch(request, isPhoto ? { cache: 'no-cache' } : undefined);
       if (response.ok) await cache.put(request, response.clone());
       return response.ok || !cached ? response : cached;
     } catch (_) {
