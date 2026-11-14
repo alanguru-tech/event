@@ -33,7 +33,7 @@
     <div class="row">
       <div class="field"><label for="person-name">Họ và tên</label><input id="person-name" type="text" maxlength="100" placeholder="Ví dụ: Nguyễn Văn A"></div>
       <div class="field"><label for="person-title">Dòng ngày lễ (không bắt buộc)</label><input id="person-title" type="text" maxlength="80" value="✦ 19 tháng 11 ✦"></div>
-      <div class="field full"><label for="person-message">Lời chúc riêng</label><textarea id="person-message" maxlength="1200" placeholder="Viết lời chúc dành riêng cho người này"></textarea></div>
+      <div class="field full"><label for="person-message">Lời chúc riêng</label><textarea id="person-message" maxlength="1200" placeholder="Viết lời chúc dành riêng cho người này"></textarea><div class="actions"><button id="insert-name-token" class="secondary" type="button">Chèn tên QR ({{name}})</button></div><small class="muted">Khi mở QR, {{name}} sẽ được thay bằng họ tên ở ô phía trên.</small></div>
       <div class="field full"><label for="person-extra">Lời nhắn cuối (không bắt buộc)</label><input id="person-extra" type="text" maxlength="240" placeholder="Ví dụ: Cảm ơn vì luôn đồng hành cùng mọi người."></div>
       <div class="field full"><label for="person-photo">Đường dẫn ảnh nằm trong GitHub</label><input id="person-photo" type="text" list="git-images" maxlength="240" placeholder="images/1.webp"><datalist id="git-images"></datalist><small class="muted">Chọn tên trong gợi ý hoặc nhập đường dẫn tương đối từ thư mục gốc repo, ví dụ images/1.webp.</small></div>
     </div>
@@ -86,6 +86,10 @@
   loadGitImageSuggestions();
 
   const isValidImagePath=path=>/^images\/[^/\\?#]+\.(jpg|jpeg|png|webp)$/i.test(path)&&!path.includes('..');
+  $('insert-name-token').addEventListener('click',()=>{
+    const field=$('person-message'),start=field.selectionStart??field.value.length,end=field.selectionEnd??start;
+    field.setRangeText('{{name}}',start,end,'end');field.focus();
+  });
   async function loadOrbitPhotoPaths(){
     try{const snap=await getDoc(doc(db,'settings','orbitPhotos'));$('orbit-photo-paths').value=snap.exists()?(snap.data().paths||[]).join('\n'):''}
     catch(e){say('Không tải được danh sách ảnh quỹ đạo: '+e.message)}
