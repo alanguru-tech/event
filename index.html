@@ -38,7 +38,7 @@
             background: #050c16;
         }
 
-        .universe-background { position: fixed; inset: 0; z-index: 0; width: 100vw; height: 100vh; height: 100svh; border: 0; pointer-events: none }
+        .universe-background { position: fixed; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; border: 0; pointer-events: none }
 
         .scene-bg {
             position: fixed;
@@ -353,47 +353,10 @@ body {
             .photo-wall::after { width: 66vmin; }
         }
 
-        body.personal-view {
-            padding: clamp(10px, 2.5vh, 24px) 14px;
-            background: #02040a
-        }
-
-        body.personal-view main {
-            width: min(860px, calc(100vw - 28px));
-            padding: clamp(22px, 4vw, 48px);
-            color: #17191d;
-            border: 2px solid #c9c9c9;
-            border-radius: clamp(28px, 5vw, 58px);
-            background: #fff;
-            box-shadow: 0 18px 70px #0008;
-            backdrop-filter: none
-        }
-
-        body.personal-view .badge {
-            margin-bottom: 20px;
-            color: #eda900;
-            border: 2px solid #eda900;
-            font-size: clamp(14px, 2vw, 22px);
-            letter-spacing: 1px
-        }
-
-        body.personal-view #greeting-title,
-        body.personal-view .divider,
-        body.personal-view .signature { display: none }
-
         body.personal-view .person-photo-wrap {
-            width: 100%;
-            min-height: clamp(190px, 32vh, 340px);
-            max-height: 42vh;
-            margin: 0 auto 10px;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border: 3px solid #111;
-            border-radius: 42px;
-            background: #fff
+            width: fit-content;
+            max-width: 100%;
+            margin: 18px auto 8px
         }
 
         body.personal-view .person-photo-wrap[hidden] { display: none }
@@ -402,41 +365,10 @@ body {
             display: block;
             width: auto;
             height: auto;
-            max-width: 100%;
-            max-height: calc(42vh - 30px);
+            max-width: min(100%, 380px);
+            max-height: 34vh;
             aspect-ratio: auto;
-            object-fit: contain;
-            border: 0;
-            border-radius: 0;
-            box-shadow: none
-        }
-
-        body.personal-view .message {
-            max-width: none;
-            margin: 10px auto 0;
-            padding: clamp(20px, 4vw, 38px);
-            color: #17191d;
-            border: 2px solid #111;
-            border-radius: 38px;
-            font-size: clamp(17px, 2.2vw, 24px);
-            line-height: 1.55
-        }
-
-        body.personal-view .signature-line {
-            margin-top: 10px;
-            padding: clamp(16px, 2.4vw, 26px);
-            color: #17191d;
-            border: 2px solid #173b4b;
-            font-size: clamp(16px, 2vw, 22px);
-            line-height: 1.5
-        }
-
-        @media(max-width:600px) {
-            body.personal-view { padding: 10px }
-            body.personal-view main { width: 100%; padding: 20px 16px; border-radius: 30px }
-            body.personal-view .person-photo-wrap { min-height: 180px; max-height: 34vh; border-radius: 28px }
-            body.personal-view .person-photo { max-height: calc(34vh - 30px) }
-            body.personal-view .message { border-radius: 26px }
+            object-fit: contain
         }
 
         @media(prefers-reduced-motion:reduce) {
