@@ -94,72 +94,69 @@
             overflow: hidden;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 1s ease .35s
+            transition: opacity 1s ease .35s;
+            perspective: 1350px;
+            perspective-origin: 50% 50%;
+            transform-style: preserve-3d
         }
 
         .revealed .photo-wall {
             opacity: 1
         }
 
-        .photo-column {
+        .photo-wall::before,
+        .photo-wall::after {
+            content: "";
             position: absolute;
-            inset: 0 auto 0 0;
-            overflow: hidden;
+            left: 50%;
+            top: 50%;
+            width: min(52vmin, 520px);
+            aspect-ratio: 1;
+            border: 1px solid #d5b8753b;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 20px #eab96810, inset 0 0 18px #eab96808
         }
 
-        .photo-track {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            will-change: transform;
+        .photo-wall::before {
+            width: min(78vmin, 760px);
+            border-color: #99b9f326;
+            transform: translate(-50%, -50%) rotateX(calc(61deg + var(--orbit-pitch, 0deg))) rotateY(var(--orbit-yaw, 0deg)) rotateZ(-14deg)
         }
 
-        .photo-track.moves-up {
-            animation: column-up var(--duration) linear infinite;
-        }
-
-        .photo-track.moves-down {
-            animation: column-down var(--duration) linear infinite;
-        }
-
-        .photo-track-group {
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .photo-track-group.photo-track-copy {
-            top: var(--group-step);
+        .photo-wall::after {
+            transform: translate(-50%, -50%) rotateX(calc(70deg + var(--orbit-pitch, 0deg))) rotateY(var(--orbit-yaw, 0deg)) rotateZ(22deg)
         }
 
         .photo-tile {
-            position: relative;
-            flex: 0 0 auto;
-            border: 1px solid #102f46;
-            border-radius: 17px;
-            background: #ffffff24;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            border: 1px solid #d6e5ffb0;
+            border-radius: 12px;
+            background: #10182a;
             overflow: hidden;
-            box-shadow: 0 3px 14px #0002;
+            box-shadow: 0 8px 26px #0009, 0 0 16px #a8c9ff32;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+            will-change: transform
         }
 
         .photo-tile img {
             display: block;
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
+            user-select: none;
+            -webkit-user-drag: none
         }
 
-        @keyframes column-up {
-            to { transform: translate3d(0, var(--travel), 0); }
-        }
-
-        @keyframes column-down {
-            from { transform: translate3d(0, var(--travel), 0); }
-            to { transform: translate3d(0, 0, 0); }
+        .photo-tile.orbit-fallback {
+            border-color: #ffffff52;
+            background:
+                radial-gradient(ellipse at 68% 28%, #ffdfb766 0 9%, transparent 10%),
+                radial-gradient(ellipse at 29% 82%, #b6a7e455 0 24%, transparent 25%),
+                linear-gradient(145deg, var(--tile-tint, #425780), #0b1222 76%)
         }
         canvas {
             position: fixed;
@@ -173,9 +170,9 @@
         main {
             position: relative;
             z-index: 2;
-            width: min(680px, 100%);
+            width: min(620px, calc(100vw - 32px));
             text-align: center;
-            padding: clamp(28px, 5vh, 52px) clamp(20px, 6vw, 64px);
+            padding: clamp(26px, 4.5vh, 42px) clamp(20px, 5vw, 54px);
             border: 1px solid #f6cd783d;
             border-radius: 28px;
             background: linear-gradient(145deg, #152b40b8, #0c1a29c9);
@@ -211,9 +208,10 @@
             margin: 0;
             font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
             font-weight: 700;
-            font-size: clamp(34px, 6vw, 54px);
+            font-size: clamp(30px, 5vw, 48px);
             line-height: 1.12;
-            letter-spacing: 0
+            letter-spacing: 0;
+            overflow-wrap: anywhere
         }
 
         h1 span {
@@ -255,9 +253,25 @@
             font-weight: 500
         }
 
+        .person-photo-wrap {
+            width: min(180px, 42vw);
+            margin: 18px auto 12px
+        }
+
+        .person-photo {
+            display: block;
+            width: 100%;
+            max-height: 210px;
+            aspect-ratio: 4 / 5;
+            object-fit: cover;
+            border-radius: 18px;
+            border: 1px solid #f6cd7855;
+            box-shadow: 0 12px 32px #0005
+        }
+
         @media(max-width:600px) {
             .photo-tile {
-                border-radius: 12px
+                border-radius: 9px
             }
 body {
                 place-items: start center;
@@ -266,7 +280,7 @@ body {
 
             main {
                 width: 100%;
-                padding: 30px 22px;
+                padding: 26px 18px;
                 border-radius: 22px
             }
 
@@ -277,8 +291,11 @@ body {
             }
 
             h1 {
-                font-size: clamp(32px, 9vw, 44px)
+                font-size: clamp(29px, 8vw, 39px)
             }
+
+            .person-photo-wrap { width: min(150px, 42vw); margin: 14px auto 10px }
+            .person-photo { max-height: 180px; border-radius: 15px }
 
             .message {
                 font-size: 16px;
@@ -325,10 +342,13 @@ body {
             }
         }
 
-        @media(max-width:600px) { .photo-tile { border-radius: 11px; } }
+        @media(max-width:600px) {
+            .photo-wall::before { width: 100vmin; }
+            .photo-wall::after { width: 66vmin; }
+        }
 
         @media(prefers-reduced-motion:reduce) {
-            .photo-track { animation: none !important; }
+            .photo-tile { will-change: auto; }
 
             *,
             *::before,
@@ -347,8 +367,8 @@ body {
     <div class="glow" aria-hidden="true"></div><canvas id="confetti" aria-hidden="true"></canvas>
     <main>
         <div class="badge">✦ &nbsp; 19 tháng 11 &nbsp; ✦</div>
-        <figure id="person-photo-wrap" hidden style="margin:24px auto 16px;max-width:240px">
-            <img id="person-photo" alt="Ảnh người nhận lời chúc" style="display:block;width:100%;max-height:280px;object-fit:cover;border-radius:20px;border:1px solid #f6cd7855;box-shadow:0 12px 32px #0005">
+        <figure id="person-photo-wrap" class="person-photo-wrap" hidden>
+            <img id="person-photo" class="person-photo" alt="Ảnh người nhận lời chúc">
         </figure>
         <h1 id="greeting-title">Ngày Quốc tế<span>Nam giới</span></h1>
         <p class="message" id="greeting-message">Chúc những người đàn ông luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được
@@ -429,7 +449,7 @@ body {
         const ctx = canvas.getContext('2d', { alpha: true });
         const photoWall = document.getElementById('photo-wall');
         let width = 0, height = 0, particles = [], celebrating = false;
-        let photoFiles = [], photoPool = [], photoTracks = [], currentColumnCount = 0, serviceWorkerRegistration = null;
+        let photoFiles = [], photoPool = [], orbitCards = [], currentColumnCount = 0, serviceWorkerRegistration = null;
 
         function isPhoneLayout() {
             return innerWidth <= 600 || (matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) <= 600);
@@ -459,25 +479,32 @@ body {
         function getLayout() {
             const phone = isPhoneLayout();
             const columns = phone ? (innerWidth > innerHeight ? 4 : 3) : 6;
-            const cellWidth = width / columns;
-            const tileWidth = Math.max(70, Math.floor(cellWidth * 0.94));
-            return { phone, columns, cellWidth, tileWidth, gap: Math.max(6, Math.round(cellWidth * 0.035)) };
+            const tileWidth = Math.max(54, Math.min(118, Math.floor(Math.min(width, height) * (phone ? 0.14 : 0.105))));
+            return { phone, columns, tileWidth };
         }
 
-        function makeTrackPhotos(selected, columns) {
-            if (!selected.length) return Array.from({ length: columns }, () => []);
-            return Array.from({ length: columns }, (_, columnIndex) => {
-                const track = selected.slice(columnIndex * 8, columnIndex * 8 + 8);
-                if (track.length >= 8) return track;
-                return Array.from({ length: 8 }, (_, index) => selected[(columnIndex * 8 + index) % selected.length]);
-            });
+        function getOrbitLayers(phone) {
+            return phone ? [
+                { radius: .22, count: 4, speed: .00021, tiltX: 66, tiltY: -12, phase: .3 },
+                { radius: .37, count: 5, speed: -.000146, tiltX: 49, tiltY: 25, phase: 1.2 },
+                { radius: .51, count: 6, speed: .000094, tiltX: 72, tiltY: -28, phase: 2.0 }
+            ] : [
+                { radius: .23, count: 5, speed: .00021, tiltX: 66, tiltY: -12, phase: .3 },
+                { radius: .38, count: 7, speed: -.000146, tiltX: 49, tiltY: 25, phase: 1.2 },
+                { radius: .52, count: 9, speed: .000094, tiltX: 72, tiltY: -28, phase: 2.0 }
+            ];
         }
 
-        function makeTile(photo, layout) {
+        function makeOrbitTile(photo, layout, index) {
             const tile = document.createElement('div');
             tile.className = 'photo-tile';
             tile.style.width = `${layout.tileWidth}px`;
-            tile.style.aspectRatio = `${photo.width} / ${photo.height}`;
+            tile.style.aspectRatio = photo ? `${photo.width} / ${photo.height}` : '1.18';
+            if (!photo) {
+                tile.classList.add('orbit-fallback');
+                tile.style.setProperty('--tile-tint', `hsl(${(index * 39 + 204) % 360} 48% 38%)`);
+                return tile;
+            }
             const img = document.createElement('img');
             img.alt = '';
             img.decoding = 'async';
@@ -485,54 +512,101 @@ body {
             img.fetchPriority = 'low';
             img.draggable = false;
             img.src = photo.src;
-            img.onerror = () => tile.remove();
+            img.onerror = () => {
+                tile.replaceChildren();
+                tile.classList.add('orbit-fallback');
+                tile.style.setProperty('--tile-tint', `hsl(${(index * 39 + 204) % 360} 48% 38%)`);
+            };
             tile.appendChild(img);
             return tile;
-        }
-
-        function createTrackGroup(photos, layout, groupHeight) {
-            const group = document.createElement('div');
-            group.className = 'photo-track-group';
-            group.style.gap = `${layout.gap}px`;
-            let heightSoFar = 0;
-            while (heightSoFar < height + 80) {
-                for (const photo of photos) {
-                    group.appendChild(makeTile(photo, layout));
-                    heightSoFar += layout.tileWidth * photo.height / photo.width + layout.gap;
-                }
-            }
-            groupHeight.value = heightSoFar - layout.gap;
-            return group;
         }
 
         function buildPhotoWall() {
             const layout = getLayout();
             photoWall.replaceChildren();
-            document.documentElement.style.setProperty('--tile-w', `${layout.tileWidth}px`);
-            for (let columnIndex = 0; columnIndex < layout.columns; columnIndex++) {
-                const photos = photoTracks[columnIndex];
-                if (!photos?.length) continue;
-                const column = document.createElement('div');
-                column.className = 'photo-column';
-                column.style.left = `${columnIndex * layout.cellWidth + (layout.cellWidth - layout.tileWidth) / 2}px`;
-                column.style.width = `${layout.tileWidth}px`;
-                const track = document.createElement('div');
-                track.className = `photo-track ${columnIndex % 2 === 0 ? 'moves-up' : 'moves-down'}`;
-                const groupHeight = { value: 0 };
-                const first = createTrackGroup(photos, layout, groupHeight);
-                const second = first.cloneNode(true);
-                second.classList.add('photo-track-copy');
-                track.append(first, second);
-                const groupStep = groupHeight.value + layout.gap;
-                track.style.setProperty('--group-height', `${groupHeight.value}px`);
-                track.style.setProperty('--group-step', `${groupStep}px`);
-                track.style.setProperty('--travel', `-${groupStep}px`);
-                track.style.height = `${groupHeight.value * 2 + layout.gap}px`;
-                track.style.setProperty('--duration', `${Math.max(24, groupHeight.value / 20)}s`);
-                column.appendChild(track);
-                photoWall.appendChild(column);
+            orbitCards = [];
+            const layers = getOrbitLayers(layout.phone);
+            let index = 0;
+            for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
+                const layer = layers[layerIndex];
+                for (let tileIndex = 0; tileIndex < layer.count; tileIndex++, index++) {
+                    const photo = photoPool.length ? photoPool[index % photoPool.length] : null;
+                    const tile = makeOrbitTile(photo, layout, index);
+                    photoWall.appendChild(tile);
+                    orbitCards.push({
+                        element: tile, layer, layerIndex,
+                        start: Math.PI * 2 * tileIndex / layer.count + layer.phase
+                    });
+                }
+            }
+            updateOrbitPositions(orbitElapsed);
+        }
+
+        let orbitElapsed = 0, orbitLastTime = 0, orbitFrameId = 0;
+        const reduceOrbitMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function updateOrbitPositions(time) {
+            const size = Math.min(width, height);
+            if (!size || !orbitCards.length) return;
+            const yaw = time * .00007;
+            const yawCos = Math.cos(yaw), yawSin = Math.sin(yaw);
+            const pitch = Math.sin(time * .00022) * .1;
+            const pitchCos = Math.cos(pitch), pitchSin = Math.sin(pitch);
+            photoWall.style.setProperty('--orbit-yaw', `${(yaw * 180 / Math.PI).toFixed(2)}deg`);
+            photoWall.style.setProperty('--orbit-pitch', `${(pitch * 180 / Math.PI).toFixed(2)}deg`);
+
+            for (const card of orbitCards) {
+                const { layer, layerIndex, start, element } = card;
+                const phase = start + time * layer.speed;
+                const radius = size * layer.radius;
+                const localX = radius * Math.cos(phase);
+                const localY = radius * Math.sin(phase);
+                const tiltX = layer.tiltX * Math.PI / 180;
+                const tiltY = layer.tiltY * Math.PI / 180;
+
+                const planeX = localX * Math.cos(tiltY) + localY * Math.sin(tiltX) * Math.sin(tiltY);
+                const planeY = localY * Math.cos(tiltX);
+                const planeZ = -localX * Math.sin(tiltY) + localY * Math.sin(tiltX) * Math.cos(tiltY);
+                const worldX = planeX * yawCos + planeZ * yawSin;
+                const worldZ = -planeX * yawSin + planeZ * yawCos;
+                const screenY = planeY * pitchCos - worldZ * pitchSin;
+                const depthZ = planeY * pitchSin + worldZ * pitchCos;
+                const tangent = phase + Math.PI / 2;
+                const tiltCardX = Math.sin(tangent) * 10;
+                const tiltCardY = -Math.cos(tangent) * 12;
+
+                element.style.transform = `translate3d(calc(-50% + ${worldX.toFixed(1)}px), calc(-50% + ${screenY.toFixed(1)}px), ${depthZ.toFixed(1)}px) rotateX(${tiltCardX.toFixed(1)}deg) rotateY(${tiltCardY.toFixed(1)}deg)`;
+                element.style.zIndex = String(1000 + layerIndex * 10 + Math.round(depthZ));
             }
         }
+
+        function animateOrbit(time) {
+            orbitFrameId = 0;
+            if (document.hidden || photoWall.hidden || !orbitCards.length || reduceOrbitMotion) return;
+            if (orbitLastTime && time - orbitLastTime < (isPhoneLayout() ? 42 : 33)) {
+                orbitFrameId = requestAnimationFrame(animateOrbit);
+                return;
+            }
+            const elapsed = orbitLastTime ? Math.min(time - orbitLastTime, 50) : 16;
+            orbitLastTime = time;
+            orbitElapsed += elapsed;
+            updateOrbitPositions(orbitElapsed);
+            orbitFrameId = requestAnimationFrame(animateOrbit);
+        }
+
+        function startOrbitAnimation() {
+            if (reduceOrbitMotion) { updateOrbitPositions(0); return; }
+            if (!orbitFrameId && !document.hidden && !photoWall.hidden && orbitCards.length) {
+                orbitFrameId = requestAnimationFrame(animateOrbit);
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (orbitFrameId) cancelAnimationFrame(orbitFrameId);
+                orbitFrameId = 0;
+            } else startOrbitAnimation();
+        });
 
         async function getServiceWorker() {
             if (!('serviceWorker' in navigator)) return null;
@@ -578,12 +652,13 @@ body {
             return Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker)).then(() => loaded);
         }
 
-        async function configurePhotoTracks(columns) {
+        let photoConfigVersion = 0;
+        async function configureOrbitPhotos(columns) {
+            const version = ++photoConfigVersion;
             currentColumnCount = columns;
-            if (!photoFiles.length) { photoTracks = []; buildPhotoWall(); return; }
+            if (!photoFiles.length) { photoPool = []; buildPhotoWall(); return; }
             const phone = isPhoneLayout();
-            const cacheColumns = phone ? 4 : 6;
-            const wanted = Math.min(photoFiles.length, Math.max(columns, cacheColumns) * 8);
+            const wanted = Math.min(photoFiles.length, phone ? 15 : 21);
             let saved = [];
             try { saved = JSON.parse(localStorage.getItem('event-photo-pool') || '[]'); } catch (_) { }
             const previous = saved.filter(src => photoFiles.some(photo => photo.src === src)).map(src => ({ src }));
@@ -592,13 +667,14 @@ body {
             try { freshCached = await cacheWithWorker(fresh.map(photo => new URL(photo.src, location.href).href)); } catch (_) { }
             let chosen = freshCached === fresh.length ? fresh : previous.length >= Math.min(wanted, fresh.length) ? previous.slice(0, wanted) : fresh;
             let measured = await loadPhotoInfo(chosen);
+            if (version !== photoConfigVersion) return;
             if (measured.length < Math.min(wanted, 8) && previous.length && chosen !== previous) {
                 const oldMeasured = await loadPhotoInfo(previous.slice(0, wanted));
                 if (oldMeasured.length > measured.length) measured = oldMeasured;
             }
-            if (!measured.length) { photoTracks = []; buildPhotoWall(); return; }
+            if (version !== photoConfigVersion) return;
+            if (!measured.length) { photoPool = []; buildPhotoWall(); return; }
             photoPool = measured;
-            photoTracks = makeTrackPhotos(photoPool, columns);
             try { localStorage.setItem('event-photo-pool', JSON.stringify(photoPool.map(photo => photo.src))); } catch (_) { }
             buildPhotoWall();
         }
@@ -608,13 +684,42 @@ body {
                 const response = await fetch('./images.json');
                 if (!response.ok) throw new Error('images.json not found');
                 const manifest = await response.json();
-                photoFiles = (manifest.images || [])
-                    .filter(path => typeof path === 'string' && /\.(jpg|jpeg|png|webp)$/i.test(path))
+                const manifestFiles = (manifest.images || [])
+                    .filter(path => isGitImagePath(path))
                     .map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
-                configurePhotoTracks(getLayout().columns).catch(error => {
+                photoFiles = manifestFiles;
+                // Start from locally available sources first so Firestore/network delays don't hold up the scene.
+                try {
+                    const cachedPaths = JSON.parse(localStorage.getItem('event-orbit-paths') || '[]');
+                    if (Array.isArray(cachedPaths) && cachedPaths.length) {
+                        photoFiles = cachedPaths.filter(isGitImagePath).map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
+                    }
+                } catch (_) { }
+                configureOrbitPhotos(getLayout().columns).catch(error => {
                     console.warn('Could not prepare photo tracks.', error);
                     buildPhotoWall();
                 });
+                // The admin-managed orbit list is public image paths only; fetch this one settings document.
+                try {
+                    const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
+                        import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js'),
+                        import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js')
+                    ]);
+                    const app = initializeApp(firebaseConfig, 'orbit-photo-settings');
+                    const settings = await getDoc(doc(getFirestore(app), 'settings', 'orbitPhotos'));
+                    const paths = settings.exists() && Array.isArray(settings.data().paths) ? settings.data().paths : [];
+                    const safePaths = paths.filter(isGitImagePath);
+                    if (safePaths.length) {
+                        try { localStorage.setItem('event-orbit-paths', JSON.stringify(safePaths)); } catch (_) { }
+                        photoFiles = safePaths.map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
+                    } else {
+                        try { localStorage.removeItem('event-orbit-paths'); } catch (_) { }
+                        photoFiles = manifestFiles;
+                    }
+                    configureOrbitPhotos(getLayout().columns).catch(error => console.warn('Could not apply Firestore orbit photos.', error));
+                } catch (settingsError) {
+                    console.info('Using the locally available orbit image list.', settingsError);
+                }
             } catch (error) {
                 console.warn('Could not prepare photo resources.', error);
                 buildPhotoWall();
@@ -627,7 +732,7 @@ body {
             resizeTimer = setTimeout(() => {
                 resizeCanvas();
                 const columns = getLayout().columns;
-                if (columns !== currentColumnCount && photoFiles.length) configurePhotoTracks(columns);
+                if (columns !== currentColumnCount && photoFiles.length) configureOrbitPhotos(columns);
                 else buildPhotoWall();
             }, 220);
         }, { passive: true });
@@ -671,6 +776,7 @@ body {
         }
         document.body.classList.add('revealed');
         startCelebration();
+        startOrbitAnimation();
         loadPersonalGreeting();
     </script>
 </body>
