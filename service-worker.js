@@ -1,4 +1,4 @@
-const CACHE_NAME = 'event-19-11-v8';
+const CACHE_NAME = 'event-19-11-v9';
 const PHOTO_CACHE = 'event-19-11-photos-v5';
 const SHELL_FILES = ['./index.html', './admin.html', './preview-vu-tru-lo-den.html', './background.svg', './images.json'];
 
