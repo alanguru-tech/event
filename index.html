@@ -181,9 +181,9 @@
             padding: clamp(26px, 4.5vh, 42px) clamp(20px, 5vw, 54px);
             border: 1px solid #f6cd783d;
             border-radius: 28px;
-            background: linear-gradient(145deg, #152b40b8, #0c1a29c9);
+            background: linear-gradient(145deg, rgb(21 43 64 / var(--card-opacity-start, .72)), rgb(12 26 41 / var(--card-opacity-end, .80)));
             box-shadow: 0 24px 90px #0008, inset 0 1px #ffffff12;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(var(--card-blur, 12px));
             opacity: 0;
             visibility: hidden;
             transform: translateY(24px) scale(.97);
@@ -289,10 +289,10 @@ body {
                 margin-top: auto;
                 padding: 19px 16px 17px;
                 border-radius: 20px;
-                background: linear-gradient(145deg, #152b40a8, #0c1a29b8);
+                background: linear-gradient(145deg, rgb(21 43 64 / var(--card-opacity-start, .66)), rgb(12 26 41 / var(--card-opacity-end, .72)));
                 box-shadow: 0 14px 46px #0006, inset 0 1px #ffffff12;
-                backdrop-filter: blur(6px);
-                -webkit-backdrop-filter: blur(6px)
+                backdrop-filter: blur(var(--card-blur, 6px));
+                -webkit-backdrop-filter: blur(var(--card-blur, 6px))
             }
 
             .badge {
@@ -450,6 +450,12 @@ body {
                     return;
                 }
                 const person = snapshot.data();
+                const savedOpacity = Number(person.cardOpacity);
+                const opacity = Number.isFinite(savedOpacity) ? Math.max(0, Math.min(100, savedOpacity)) / 100 : 0.72;
+                const greetingCard = document.querySelector('main');
+                greetingCard.style.setProperty('--card-opacity-start', opacity.toFixed(2));
+                greetingCard.style.setProperty('--card-opacity-end', opacity.toFixed(2));
+                greetingCard.style.setProperty('--card-blur', `${(opacity * 12).toFixed(1)}px`);
                 // Personal QR cards use the recipient's name as the heading; the circled generic title is omitted.
                 document.getElementById('greeting-title').innerHTML = `<span>${escapeHtml(person.name || 'Nam giới')}</span>`;
                 const recipientName = person.name || 'bạn';
@@ -808,7 +814,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=13' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=14' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
