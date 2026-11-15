@@ -753,38 +753,10 @@ body {
                     .filter(path => isGitImagePath(path))
                     .map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
                 photoFiles = manifestFiles;
-                // Start from locally available sources first so Firestore/network delays don't hold up the scene.
-                try {
-                    const cachedPaths = JSON.parse(localStorage.getItem('event-orbit-paths') || '[]');
-                    if (Array.isArray(cachedPaths) && cachedPaths.length) {
-                        photoFiles = cachedPaths.filter(isGitImagePath).map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
-                    }
-                } catch (_) { }
                 configureOrbitPhotos(getLayout().columns).catch(error => {
                     console.warn('Could not prepare photo tracks.', error);
                     buildPhotoWall();
                 });
-                // The admin-managed orbit list is public image paths only; fetch this one settings document.
-                try {
-                    const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
-                        import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js'),
-                        import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js')
-                    ]);
-                    const app = initializeApp(firebaseConfig, 'orbit-photo-settings');
-                    const settings = await getDoc(doc(getFirestore(app), 'settings', 'orbitPhotos'));
-                    const paths = settings.exists() && Array.isArray(settings.data().paths) ? settings.data().paths : [];
-                    const safePaths = paths.filter(isGitImagePath);
-                    if (safePaths.length) {
-                        try { localStorage.setItem('event-orbit-paths', JSON.stringify(safePaths)); } catch (_) { }
-                        photoFiles = safePaths.map(path => ({ src: './' + path.split('/').map(encodeURIComponent).join('/') }));
-                    } else {
-                        try { localStorage.removeItem('event-orbit-paths'); } catch (_) { }
-                        photoFiles = manifestFiles;
-                    }
-                    configureOrbitPhotos(getLayout().columns).catch(error => console.warn('Could not apply Firestore orbit photos.', error));
-                } catch (settingsError) {
-                    console.info('Using the locally available orbit image list.', settingsError);
-                }
             } catch (error) {
                 console.warn('Could not prepare photo resources.', error);
                 buildPhotoWall();
@@ -836,7 +808,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=12' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=13' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
