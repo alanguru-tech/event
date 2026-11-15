@@ -280,48 +280,65 @@
                 border-radius: 9px
             }
 body {
-                place-items: start center;
-                padding: 18px 14px
+                place-items: end center;
+                padding: 10px 12px max(10px, env(safe-area-inset-bottom))
             }
 
             main {
-                width: 100%;
-                padding: 26px 18px;
-                border-radius: 22px
+                width: min(84vw, 370px);
+                margin-top: auto;
+                padding: 19px 16px 17px;
+                border-radius: 20px;
+                background: linear-gradient(145deg, #152b40a8, #0c1a29b8);
+                box-shadow: 0 14px 46px #0006, inset 0 1px #ffffff12;
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px)
             }
 
             .badge {
-                font-size: 10px;
-                letter-spacing: 1.5px;
-                padding: 8px 12px
+                font-size: 9px;
+                letter-spacing: 1.25px;
+                padding: 7px 10px
             }
 
             h1 {
-                font-size: clamp(29px, 8vw, 39px)
+                font-size: clamp(25px, 7vw, 33px);
+                line-height: 1.08
             }
 
-            .person-photo-wrap { width: min(150px, 42vw); margin: 14px auto 10px }
-            .person-photo { max-height: 180px; border-radius: 15px }
+            .person-photo-wrap { width: min(112px, 34vw); margin: 10px auto 7px }
+            .person-photo { max-height: 17vh; border-radius: 12px }
+
+            body.personal-view .person-photo-wrap {
+                max-width: 100%;
+                margin: 10px auto 7px
+            }
+
+            body.personal-view .person-photo {
+                max-width: min(100%, 112px);
+                max-height: 17vh
+            }
 
             .message {
-                font-size: 16px;
-                line-height: 1.65;
-                margin-top: 18px
+                font-size: 14px;
+                line-height: 1.5;
+                margin-top: 12px
             }
 
             .divider {
-                margin: 22px auto 18px
+                margin: 14px auto 11px
             }
 
             .signature-line {
-                margin-top: 20px;
-                font-size: 14px
+                margin-top: 11px;
+                font-size: 12px;
+                line-height: 1.45
             }
 
             .signature {
-                font-size: 11px;
-                line-height: 1.7;
-                margin-top: 14px
+                font-size: 9px;
+                line-height: 1.5;
+                margin-top: 9px
             }
         }
 
@@ -819,7 +836,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=10' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=12' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
