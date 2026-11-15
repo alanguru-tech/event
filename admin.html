@@ -35,13 +35,11 @@
       <div class="field"><label for="person-title">Dòng ngày lễ (không bắt buộc)</label><input id="person-title" type="text" maxlength="80" value="✦ 19 tháng 11 ✦"></div>
       <div class="field full"><label for="person-message">Lời chúc riêng</label><textarea id="person-message" maxlength="1200" placeholder="Viết lời chúc dành riêng cho người này"></textarea><div class="actions"><button id="insert-name-token" class="secondary" type="button">Chèn tên QR ({{name}})</button></div><small class="muted">Khi mở QR, {{name}} sẽ được thay bằng họ tên ở ô phía trên.</small></div>
       <div class="field full"><label for="person-extra">Lời nhắn cuối (không bắt buộc)</label><input id="person-extra" type="text" maxlength="240" placeholder="Ví dụ: Cảm ơn vì luôn đồng hành cùng mọi người."></div>
-      <div class="field full"><label for="person-photo">Đường dẫn ảnh nằm trong GitHub</label><input id="person-photo" type="text" list="git-images" maxlength="240" placeholder="images/1.webp"><datalist id="git-images"></datalist><small class="muted">Chọn tên trong gợi ý hoặc nhập đường dẫn tương đối từ thư mục gốc repo, ví dụ images/1.webp.</small></div>
+      <div class="field full"><label for="person-photo">Ảnh chân dung (đường dẫn GitHub, không bắt buộc)</label><input id="person-photo" type="text" list="git-images" maxlength="240" placeholder="images/1.webp"><datalist id="git-images"></datalist><small class="muted">Ảnh này hiện trong thiệp. Nhập đường dẫn tương đối từ thư mục gốc repo.</small></div>
+      <div class="field full"><label for="person-orbit-photos">Ảnh quỹ đạo riêng của QR này (mỗi dòng một đường dẫn)</label><textarea id="person-orbit-photos" class="orbit-paths" maxlength="24000" placeholder="images/1.webp&#10;images/2.webp&#10;images/3.webp"></textarea><small class="muted">Danh sách này được lưu trong hồ sơ Firestore của QR này. Mỗi mã QR có danh sách ảnh riêng; tối đa 100 ảnh.</small></div>
     </div>
     <div class="actions"><button id="save-person">Lưu hồ sơ và tạo QR</button><button id="refresh-list" class="secondary">Tải lại tủ hồ sơ</button><button id="print-qr" class="secondary">Xuất QR đã chọn · 2 × 2 cm</button></div>
-    <h2>Ảnh chạy trên quỹ đạo</h2>
-    <div class="field full"><label for="orbit-photo-paths">Đường dẫn ảnh GitHub (mỗi dòng một ảnh)</label><textarea id="orbit-photo-paths" class="orbit-paths" maxlength="24000" placeholder="images/1.webp&#10;images/2.webp&#10;images/3.webp"></textarea><small class="muted">Nhập đường dẫn tương đối từ thư mục gốc repo. Danh sách ảnh được xáo trộn khi tạo quỹ đạo; chỉ tải số ảnh cần dùng.</small></div>
-    <div class="actions"><button id="save-orbit-photos">Lưu danh sách ảnh quỹ đạo</button></div>
-    <p class="private">Firebase lưu họ tên, lời chúc và đường dẫn ảnh. Tệp ảnh thực tế được tải từ GitHub Pages, nên đường dẫn cần trỏ tới tệp đã đưa lên repo.</p>
+    <p class="private">Firestore lưu danh sách đường dẫn ảnh riêng trong từng hồ sơ QR. Tệp ảnh vẫn được tải từ GitHub Pages, nên đường dẫn cần trỏ tới tệp đã đưa lên repo.</p>
   </section>
   <p id="status" class="status" role="status"></p>
   <section id="results"></section>
@@ -50,7 +48,7 @@
 <script type="module">
   import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js';
   import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js';
-  import {getFirestore,collection,doc,setDoc,getDocs,getDoc,query,orderBy,serverTimestamp,deleteDoc} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
+  import {getFirestore,collection,doc,setDoc,getDocs,getDoc,query,orderBy,serverTimestamp,deleteDoc,updateDoc} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
   const config={apiKey:'AIzaSyAL8w7SsKAmjF9_Am_RMXCtldk08Daj5Kk',authDomain:'event-896c1.firebaseapp.com',projectId:'event-896c1',storageBucket:'event-896c1.firebasestorage.app',messagingSenderId:'717683458969',appId:'1:717683458969:web:d60444a971f66e4cb20908'};
   const app=initializeApp(config),auth=getAuth(app),db=getFirestore(app);
@@ -77,7 +75,7 @@
     $('sign-in').classList.toggle('hidden',allowed);
     $('sign-out').classList.toggle('hidden',!allowed);
     $('account').textContent=user?`Đã đăng nhập: ${user.email||''} · UID: ${user.uid}`:'';
-    if(allowed){loadCabinet();loadOrbitPhotoPaths()}else {$('results').replaceChildren();$('orbit-photo-paths').value='';selectedCodes.clear()}
+    if(allowed){loadCabinet()}else {$('results').replaceChildren();$('person-orbit-photos').value='';selectedCodes.clear()}
   });
 
   async function loadGitImageSuggestions(){
@@ -90,20 +88,13 @@
     const field=$('person-message'),start=field.selectionStart??field.value.length,end=field.selectionEnd??start;
     field.setRangeText('{{name}}',start,end,'end');field.focus();
   });
-  async function loadOrbitPhotoPaths(){
-    try{const snap=await getDoc(doc(db,'settings','orbitPhotos'));$('orbit-photo-paths').value=snap.exists()?(snap.data().paths||[]).join('\n'):''}
-    catch(e){say('Không tải được danh sách ảnh quỹ đạo: '+e.message)}
+  function readOrbitPaths(field){
+    const paths=[...new Set(field.value.split(/\r?\n/).map(path=>path.trim()).filter(Boolean))];
+    if(paths.length>100)throw new Error('Tối đa 100 đường dẫn ảnh cho mỗi QR.');
+    const invalid=paths.find(path=>!isValidImagePath(path));
+    if(invalid)throw new Error(`Đường dẫn chưa hợp lệ: ${invalid}. Dùng dạng images/tên-tệp.webp.`);
+    return paths;
   }
-  $('save-orbit-photos').addEventListener('click',async()=>{
-    const user=auth.currentUser;if(!user)return say('Hãy đăng nhập trước.');
-    const paths=[...new Set($('orbit-photo-paths').value.split(/\r?\n/).map(path=>path.trim()).filter(Boolean))];
-    if(paths.length>100)return say('Tối đa 100 đường dẫn ảnh.');
-    const invalid=paths.find(path=>!isValidImagePath(path));if(invalid)return say(`Đường dẫn chưa hợp lệ: ${invalid}. Dùng dạng images/tên-tệp.webp.`);
-    const button=$('save-orbit-photos');button.disabled=true;
-    try{await setDoc(doc(db,'settings','orbitPhotos'),{paths,updatedAt:serverTimestamp(),updatedBy:user.uid});say(`Đã lưu ${paths.length} đường dẫn ảnh quỹ đạo. Trang khách sẽ lấy danh sách này khi tải lại.`)}
-    catch(e){say('Không lưu được danh sách ảnh: '+(e.code==='permission-denied'?'kiểm tra quyền settings/orbitPhotos trong Firestore Rules.':e.message))}
-    finally{button.disabled=false}
-  });
 
   $('save-person').addEventListener('click',async()=>{
     const user=auth.currentUser;if(!user)return say('Hãy đăng nhập trước.');
@@ -114,10 +105,11 @@
       say('Đang lưu hồ sơ…');
       const photoPath=$('person-photo').value.trim();
       if(photoPath&&!isValidImagePath(photoPath))throw new Error('Đường dẫn ảnh cần có dạng images/tên-tệp.webp và không chứa thư mục khác.');
+      const orbitPhotos=readOrbitPaths($('person-orbit-photos'));
       const code=makeCode();
-      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,createdAt:serverTimestamp(),createdBy:user.uid};
+      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,orbitPhotos,createdAt:serverTimestamp(),createdBy:user.uid};
       await setDoc(doc(db,'greetings',code),record);
-      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';
+      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';$('person-orbit-photos').value='';
       say('Đã lưu hồ sơ. QR mới xuất hiện trong tủ hồ sơ bên dưới.');
       await loadCabinet(code);
     }catch(e){console.error(e);say('Không lưu được: '+(e.code==='permission-denied'?'tài khoản này chưa được cấp quyền trong Firestore Rules.':e.message))}
@@ -176,7 +168,19 @@
         const url=document.createElement('a');url.className='qr-url';url.href=link.href;url.target='_blank';url.rel='noopener';url.textContent=link.href;
         const copy=document.createElement('button');copy.className='secondary';copy.textContent='Sao chép link';copy.addEventListener('click',async()=>{await navigator.clipboard.writeText(link.href);say('Đã sao chép đường dẫn QR.')});
         const revoke=document.createElement('button');revoke.className='secondary';revoke.textContent='Thu hồi QR';revoke.addEventListener('click',async()=>{if(!confirm(`Thu hồi QR của ${person.name||'người này'}? Link hiện tại sẽ không mở được nữa.`))return;try{await deleteDoc(doc(db,'greetings',item.id));say('Đã thu hồi QR.');await loadCabinet()}catch(e){say('Không thu hồi được: '+e.message)}});
-        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap);results.append(card);
+        const orbitLabel=document.createElement('label');orbitLabel.className='field';orbitLabel.textContent='Ảnh quỹ đạo riêng · mỗi dòng một đường dẫn';
+        const orbitEditor=document.createElement('textarea');orbitEditor.className='orbit-paths';orbitEditor.maxLength=24000;orbitEditor.placeholder='images/1.webp\nimages/2.webp';orbitEditor.value=Array.isArray(person.orbitPhotos)?person.orbitPhotos.join('\n'):'';
+        const orbitSave=document.createElement('button');orbitSave.className='secondary';orbitSave.type='button';orbitSave.textContent='Lưu ảnh riêng cho QR này';
+        orbitSave.addEventListener('click',async()=>{
+          try{
+            const paths=readOrbitPaths(orbitEditor);orbitSave.disabled=true;
+            await updateDoc(doc(db,'greetings',item.id),{orbitPhotos:paths});
+            say(`Đã lưu ${paths.length} ảnh riêng cho ${person.name||'QR này'}.`);
+          }catch(e){say('Không lưu được danh sách ảnh: '+e.message)}
+          finally{orbitSave.disabled=false}
+        });
+        orbitLabel.append(orbitEditor);const orbitActions=document.createElement('div');orbitActions.className='actions';orbitActions.append(orbitSave);
+        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap,orbitLabel,orbitActions);results.append(card);
         if(window.QRCode){
           new QRCode(qr,{text:link.href,width:180,height:180,correctLevel:QRCode.CorrectLevel.H});
           const logo=document.createElement('div');logo.className='qr-logo-disc';const mark=document.createElement('img');mark.className='qr-logo-mark';mark.src='./icon-qr.png';mark.alt='Logo AG';mark.draggable=false;logo.append(mark);
