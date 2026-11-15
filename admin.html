@@ -37,6 +37,7 @@
       <div class="field full"><label for="person-extra">Lời nhắn cuối (không bắt buộc)</label><input id="person-extra" type="text" maxlength="240" placeholder="Ví dụ: Cảm ơn vì luôn đồng hành cùng mọi người."></div>
       <div class="field full"><label for="person-photo">Ảnh chân dung (đường dẫn GitHub, không bắt buộc)</label><input id="person-photo" type="text" list="git-images" maxlength="240" placeholder="images/1.webp"><datalist id="git-images"></datalist><small class="muted">Ảnh này hiện trong thiệp. Nhập đường dẫn tương đối từ thư mục gốc repo.</small></div>
       <div class="field full"><label for="person-card-opacity">Độ đục nền thiệp: <output id="person-card-opacity-value">72%</output></label><input id="person-card-opacity" type="range" min="0" max="100" step="1" value="72"><small class="muted">0% nền trong suốt · 100% nền đặc. Chữ và ảnh không bị làm mờ.</small></div>
+      <div class="field full"><label for="person-orbit-speed">Tốc độ quay ảnh: <output id="person-orbit-speed-value">100%</output></label><input id="person-orbit-speed" type="range" min="25" max="300" step="5" value="100"><small class="muted">100% là tốc độ mặc định · điều chỉnh riêng cho vũ trụ ảnh của QR này.</small></div>
       <div class="field full"><label for="person-orbit-photos">Ảnh quỹ đạo riêng của QR này (mỗi dòng một đường dẫn)</label><textarea id="person-orbit-photos" class="orbit-paths" maxlength="24000" placeholder="images/1.webp&#10;images/2.webp&#10;images/3.webp"></textarea><small class="muted">Danh sách này được lưu trong hồ sơ Firestore của QR này. Mỗi mã QR có danh sách ảnh riêng; tối đa 100 ảnh.</small></div>
     </div>
     <div class="actions"><button id="save-person">Lưu hồ sơ và tạo QR</button><button id="refresh-list" class="secondary">Tải lại tủ hồ sơ</button><button id="print-qr" class="secondary">Xuất QR đã chọn · 2 × 2 cm</button></div>
@@ -86,7 +87,9 @@
 
   const isValidImagePath=path=>/^images\/[^/\\?#]+\.(jpg|jpeg|png|webp)$/i.test(path)&&!path.includes('..');
   const clampOpacity=value=>Math.max(0,Math.min(100,Math.round(Number(value)||0)));
+  const clampOrbitSpeed=value=>Math.max(25,Math.min(300,Math.round(Number(value)||100)));
   $('person-card-opacity').addEventListener('input',()=>{$('person-card-opacity-value').value=$('person-card-opacity').value+'%'});
+  $('person-orbit-speed').addEventListener('input',()=>{$('person-orbit-speed-value').value=$('person-orbit-speed').value+'%'});
   $('insert-name-token').addEventListener('click',()=>{
     const field=$('person-message'),start=field.selectionStart??field.value.length,end=field.selectionEnd??start;
     field.setRangeText('{{name}}',start,end,'end');field.focus();
@@ -110,9 +113,9 @@
       if(photoPath&&!isValidImagePath(photoPath))throw new Error('Đường dẫn ảnh cần có dạng images/tên-tệp.webp và không chứa thư mục khác.');
       const orbitPhotos=readOrbitPaths($('person-orbit-photos'));
       const code=makeCode();
-      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,orbitPhotos,cardOpacity:clampOpacity($('person-card-opacity').value),createdAt:serverTimestamp(),createdBy:user.uid};
+      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,orbitPhotos,cardOpacity:clampOpacity($('person-card-opacity').value),orbitSpeed:clampOrbitSpeed($('person-orbit-speed').value),createdAt:serverTimestamp(),createdBy:user.uid};
       await setDoc(doc(db,'greetings',code),record);
-      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';$('person-orbit-photos').value='';$('person-card-opacity').value='72';$('person-card-opacity-value').value='72%';
+      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';$('person-orbit-photos').value='';$('person-card-opacity').value='72';$('person-card-opacity-value').value='72%';$('person-orbit-speed').value='100';$('person-orbit-speed-value').value='100%';
       say('Đã lưu hồ sơ. QR mới xuất hiện trong tủ hồ sơ bên dưới.');
       await loadCabinet(code);
     }catch(e){console.error(e);say('Không lưu được: '+(e.code==='permission-denied'?'tài khoản này chưa được cấp quyền trong Firestore Rules.':e.message))}
@@ -178,18 +181,24 @@
         const opacityValue=document.createElement('output');opacityValue.value=`${clampOpacity(person.cardOpacity??72)}%`;opacityTitle.append(opacityValue);
         const opacityEditor=document.createElement('input');opacityEditor.type='range';opacityEditor.min='0';opacityEditor.max='100';opacityEditor.step='1';opacityEditor.value=String(clampOpacity(person.cardOpacity??72));
         opacityEditor.addEventListener('input',()=>{opacityValue.value=opacityEditor.value+'%'});opacityLabel.append(opacityTitle,opacityEditor);
-        const orbitSave=document.createElement('button');orbitSave.className='secondary';orbitSave.type='button';orbitSave.textContent='Lưu ảnh và độ đục cho QR này';
+        const speedLabel=document.createElement('label');speedLabel.className='field';
+        const speedTitle=document.createElement('span');speedTitle.textContent='Tốc độ quay ảnh: ';
+        const speedValue=document.createElement('output');speedValue.value=`${clampOrbitSpeed(person.orbitSpeed??100)}%`;speedTitle.append(speedValue);
+        const speedEditor=document.createElement('input');speedEditor.type='range';speedEditor.min='25';speedEditor.max='300';speedEditor.step='5';speedEditor.value=String(clampOrbitSpeed(person.orbitSpeed??100));
+        speedEditor.addEventListener('input',()=>{speedValue.value=speedEditor.value+'%'});speedLabel.append(speedTitle,speedEditor);
+        const orbitSave=document.createElement('button');orbitSave.className='secondary';orbitSave.type='button';orbitSave.textContent='Lưu ảnh, độ đục và tốc độ';
         orbitSave.addEventListener('click',async()=>{
           try{
             const paths=readOrbitPaths(orbitEditor);orbitSave.disabled=true;
             const cardOpacity=clampOpacity(opacityEditor.value);
-            await updateDoc(doc(db,'greetings',item.id),{orbitPhotos:paths,cardOpacity});
-            say(`Đã lưu ${paths.length} ảnh và độ đục ${cardOpacity}% cho ${person.name||'QR này'}.`);
+            const orbitSpeed=clampOrbitSpeed(speedEditor.value);
+            await updateDoc(doc(db,'greetings',item.id),{orbitPhotos:paths,cardOpacity,orbitSpeed});
+            say(`Đã lưu ${paths.length} ảnh, độ đục ${cardOpacity}% và tốc độ ${orbitSpeed}% cho ${person.name||'QR này'}.`);
           }catch(e){say('Không lưu được danh sách ảnh: '+e.message)}
           finally{orbitSave.disabled=false}
         });
         orbitLabel.append(orbitEditor);const orbitActions=document.createElement('div');orbitActions.className='actions';orbitActions.append(orbitSave);
-        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap,opacityLabel,orbitLabel,orbitActions);results.append(card);
+        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap,opacityLabel,speedLabel,orbitLabel,orbitActions);results.append(card);
         if(window.QRCode){
           new QRCode(qr,{text:link.href,width:180,height:180,correctLevel:QRCode.CorrectLevel.H});
           const logo=document.createElement('div');logo.className='qr-logo-disc';const mark=document.createElement('img');mark.className='qr-logo-mark';mark.src='./icon-qr.png';mark.alt='Logo AG';mark.draggable=false;logo.append(mark);
