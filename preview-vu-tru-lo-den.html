@@ -76,6 +76,7 @@
       function buildCards() {
         host.replaceChildren();
         cards = [];
+        if (!photoPaths.length) return;
         let index = 0;
         layers.forEach((layer, layerIndex) => {
           for (let i = 0; i < layer.count; i++, index++) {
@@ -102,50 +103,52 @@
       }
 
       async function loadManifest() {
-        let repoPaths = [];
+        const qrId = new URLSearchParams(location.search).get('id') || '';
+        if (qrId) {
+          if (!/^[a-f0-9]{32}$/i.test(qrId)) return;
+          const cacheKey = `event-orbit-paths-${qrId}`;
+          let cachedPaths = [];
+          try {
+            const value = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            if (Array.isArray(value)) cachedPaths = value.filter(isImagePath);
+          } catch (_) { }
+          if (cachedPaths.length) applyUniversePaths(cachedPaths, qrId);
+
+          try {
+            const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
+              import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js'),
+              import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js')
+            ]);
+            const firebaseConfig = {
+              apiKey: 'AIzaSyAL8w7SsKAmjF9_Am_RMXCtldk08Daj5Kk',
+              authDomain: 'event-896c1.firebaseapp.com',
+              projectId: 'event-896c1',
+              storageBucket: 'event-896c1.firebasestorage.app',
+              messagingSenderId: '717683458969',
+              appId: '1:717683458969:web:d60444a971f66e4cb20908'
+            };
+            const app = initializeApp(firebaseConfig, 'greeting-universe-' + qrId);
+            const snapshot = await getDoc(doc(getFirestore(app), 'greetings', qrId));
+            const storedPaths = snapshot.exists() && Array.isArray(snapshot.data().orbitPhotos)
+              ? snapshot.data().orbitPhotos.filter(isImagePath) : [];
+            try { localStorage.setItem(cacheKey, JSON.stringify(storedPaths)); } catch (_) { }
+            applyUniversePaths(storedPaths, qrId);
+          } catch (error) {
+            if (!cachedPaths.length) applyUniversePaths([], qrId);
+            console.warn('Không tải được danh sách ảnh riêng của QR.', error);
+          }
+          return;
+        }
+
+        // Standalone preview only: without a QR, show the repository manifest.
         try {
           const response = await fetch('./images.json', { cache: 'no-cache' });
-          if (response.ok) {
-            const data = await response.json();
-            repoPaths = Array.isArray(data.images) ? data.images.filter(isImagePath) : [];
-          }
+          if (!response.ok) throw new Error('images.json is unavailable');
+          const data = await response.json();
+          const repoPaths = Array.isArray(data.images) ? data.images.filter(isImagePath) : [];
+          applyUniversePaths(repoPaths);
         } catch (_) {
-          // Mở trực tiếp bằng file:// thì trình duyệt có thể chặn fetch; khi đó dùng khung minh họa.
-        }
-        let paths = repoPaths;
-        try {
-          const savedPaths = JSON.parse(localStorage.getItem('event-orbit-paths') || '[]');
-          if (Array.isArray(savedPaths) && savedPaths.length) paths = savedPaths.filter(isImagePath);
-        } catch (_) { }
-        applyUniversePaths(paths);
-
-        // Load the admin-managed public GitHub image paths, if available.
-        try {
-          const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
-            import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js'),
-            import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js')
-          ]);
-          const firebaseConfig = {
-            apiKey: 'AIzaSyAL8w7SsKAmjF9_Am_RMXCtldk08Daj5Kk',
-            authDomain: 'event-896c1.firebaseapp.com',
-            projectId: 'event-896c1',
-            storageBucket: 'event-896c1.firebasestorage.app',
-            messagingSenderId: '717683458969',
-            appId: '1:717683458969:web:d60444a971f66e4cb20908'
-          };
-          const app = initializeApp(firebaseConfig, 'orbit-background-settings');
-          const settings = await getDoc(doc(getFirestore(app), 'settings', 'orbitPhotos'));
-          const configured = settings.exists() && Array.isArray(settings.data().paths)
-            ? settings.data().paths.filter(isImagePath) : [];
-          if (configured.length) {
-            try { localStorage.setItem('event-orbit-paths', JSON.stringify(configured)); } catch (_) { }
-            applyUniversePaths(configured);
-          } else {
-            try { localStorage.removeItem('event-orbit-paths'); } catch (_) { }
-            applyUniversePaths(repoPaths);
-          }
-        } catch (_) {
-          // Keep using the cached list or images.json when Firestore is unavailable.
+          applyUniversePaths([]);
         }
       }
 
@@ -172,8 +175,7 @@
         return result;
       }
 
-      function applyUniversePaths(paths) {
-        const id = new URLSearchParams(location.search).get('id') || '';
+      function applyUniversePaths(paths, id = '') {
         const photoCount = layers.reduce((sum, layer) => sum + layer.count, 0);
         const ordered = seededShuffle(paths, id);
         photoPaths = ordered.slice(0, photoCount).map(path => `./${path.split('/').map(encodeURIComponent).join('/')}`);
