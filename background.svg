@@ -1,10 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" fill="none">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="42%" r="76%">
-      <stop offset="0%" stop-color="#17344c"/>
-      <stop offset="48%" stop-color="#0b1b2d"/>
-      <stop offset="100%" stop-color="#050c16"/>
+    <radialGradient id="space" cx="50%" cy="48%" r="76%">
+      <stop stop-color="#17213a"/>
+      <stop offset=".48" stop-color="#090e1c"/>
+      <stop offset="1" stop-color="#02040a"/>
     </radialGradient>
+    <radialGradient id="nebula" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#7561b4" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#171b35" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="disk" x1="0" y1=".5" x2="1" y2=".5">
+      <stop stop-color="#25172a" stop-opacity="0"/>
+      <stop offset=".19" stop-color="#c5683c" stop-opacity=".35"/>
+      <stop offset=".39" stop-color="#ffb76c"/>
+      <stop offset=".49" stop-color="#fff5dc"/>
+      <stop offset=".55" stop-color="#fff9ea"/>
+      <stop offset=".68" stop-color="#ffbd73"/>
+      <stop offset=".84" stop-color="#a44c48" stop-opacity=".65"/>
+      <stop offset="1" stop-color="#25172a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="photon" x1=".15" y1=".1" x2=".85" y2=".9">
+      <stop stop-color="#ffd7a0"/>
+      <stop offset=".48" stop-color="#fff8e7"/>
+      <stop offset="1" stop-color="#eca86d"/>
+    </linearGradient>
+    <radialGradient id="horizon" cx="42%" cy="34%" r="70%">
+      <stop stop-color="#11121a"/>
+      <stop offset=".6" stop-color="#03040a"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <radialGradient id="coreGlow">
+      <stop stop-color="#f2b672" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#f2b672" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="thinGlow" x="-20%" y="-30%" width="140%" height="160%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
   </defs>
-  <rect width="1600" height="1000" fill="url(#bg)"/>
+
+  <path fill="url(#space)" d="M0 0h1600v1000H0z"/>
+  <ellipse cx="800" cy="490" rx="720" ry="460" fill="url(#nebula)"/>
+  <ellipse cx="405" cy="550" rx="430" ry="240" fill="#be613b" opacity=".07" filter="url(#softGlow)"/>
+  <ellipse cx="1235" cy="455" rx="410" ry="260" fill="#5867b0" opacity=".08" filter="url(#softGlow)"/>
+
+  <g fill="#dce8ff">
+    <circle cx="89" cy="136" r="1.5" opacity=".68"/><circle cx="225" cy="283" r="1" opacity=".5"/>
+    <circle cx="354" cy="92" r="1.4" opacity=".6"/><circle cx="515" cy="185" r="1" opacity=".65"/>
+    <circle cx="708" cy="108" r="1.2" opacity=".5"/><circle cx="965" cy="166" r="1" opacity=".7"/>
+    <circle cx="1190" cy="100" r="1.4" opacity=".55"/><circle cx="1432" cy="190" r="1" opacity=".7"/>
+    <circle cx="1512" cy="374" r="1.5" opacity=".48"/><circle cx="132" cy="750" r="1" opacity=".7"/>
+    <circle cx="316" cy="864" r="1.4" opacity=".5"/><circle cx="575" cy="793" r="1" opacity=".7"/>
+    <circle cx="1037" cy="870" r="1.5" opacity=".55"/><circle cx="1298" cy="770" r="1" opacity=".72"/>
+    <circle cx="1504" cy="900" r="1.2" opacity=".48"/>
+  </g>
+
+  <!-- Soft halo and rear side of the accretion disk. -->
+  <g transform="rotate(-11 800 500)">
+    <ellipse cx="800" cy="500" rx="675" ry="180" stroke="#f39a60" stroke-width="78" opacity=".15" filter="url(#softGlow)"/>
+    <ellipse cx="800" cy="500" rx="640" ry="144" stroke="url(#disk)" stroke-width="43" opacity=".7" filter="url(#thinGlow)"/>
+    <ellipse cx="800" cy="500" rx="608" ry="123" stroke="url(#disk)" stroke-width="15" opacity=".9"/>
+    <ellipse cx="800" cy="500" rx="575" ry="103" stroke="#fff1d7" stroke-width="2" opacity=".68"/>
+    <ellipse cx="800" cy="500" rx="650" ry="154" stroke="#e78f5e" stroke-width="2" opacity=".54"/>
+    <ellipse cx="800" cy="500" rx="525" ry="81" stroke="#fff" stroke-width="1.5" opacity=".48"/>
+  </g>
+
+  <!-- Photon ring and the black event horizon. -->
+  <circle cx="800" cy="500" r="184" fill="url(#coreGlow)"/>
+  <circle cx="800" cy="500" r="145" stroke="#ffdbaa" stroke-width="8" opacity=".72" filter="url(#thinGlow)"/>
+  <circle cx="800" cy="500" r="137" stroke="url(#photon)" stroke-width="2.5" opacity=".94"/>
+  <circle cx="800" cy="500" r="128" fill="url(#horizon)"/>
+
+  <!-- Bright foreground stream bends across the horizon to suggest gravitational lensing. -->
+  <g transform="rotate(-11 800 500)" opacity=".96">
+    <path d="M144 493c188-71 327-86 457-65 86 14 129 51 199 54 96 4 165-45 265-59 135-18 271 15 391 70" stroke="#ffbd78" stroke-width="38" opacity=".32" filter="url(#softGlow)"/>
+    <path d="M144 493c188-71 327-86 457-65 86 14 129 51 199 54 96 4 165-45 265-59 135-18 271 15 391 70" stroke="url(#disk)" stroke-width="13" opacity=".88"/>
+    <path d="M156 485c188-65 317-77 441-56 92 16 136 49 206 50 100 1 166-43 265-54 136-15 267 15 379 66" stroke="#fff7e5" stroke-width="2" opacity=".8"/>
+    <path d="M174 505c185-55 305-60 416-40 94 17 148 45 216 43 103-3 166-39 263-47 127-11 249 16 358 59" stroke="#ffd29b" stroke-width="3" opacity=".54"/>
+  </g>
+
+  <rect width="1600" height="1000" fill="url(#space)" opacity=".08"/>
 </svg>
