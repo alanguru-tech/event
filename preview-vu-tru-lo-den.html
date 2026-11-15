@@ -63,6 +63,7 @@
       const host = document.getElementById('photos');
       let photoPaths = [];
       let cards = [];
+      let rotationMultiplier = 1;
       let lastFrame = 0;
       let elapsedTime = 0;
 
@@ -107,7 +108,12 @@
         if (qrId) {
           if (!/^[a-f0-9]{32}$/i.test(qrId)) return;
           const cacheKey = `event-orbit-paths-${qrId}`;
+          const speedCacheKey = `event-orbit-speed-${qrId}`;
           let cachedPaths = [];
+          try {
+            const cachedSpeed = Number(localStorage.getItem(speedCacheKey));
+            if (Number.isFinite(cachedSpeed) && cachedSpeed >= 25 && cachedSpeed <= 300) rotationMultiplier = cachedSpeed / 100;
+          } catch (_) { }
           try {
             const value = JSON.parse(localStorage.getItem(cacheKey) || '[]');
             if (Array.isArray(value)) cachedPaths = value.filter(isImagePath);
@@ -129,9 +135,12 @@
             };
             const app = initializeApp(firebaseConfig, 'greeting-universe-' + qrId);
             const snapshot = await getDoc(doc(getFirestore(app), 'greetings', qrId));
-            const storedPaths = snapshot.exists() && Array.isArray(snapshot.data().orbitPhotos)
-              ? snapshot.data().orbitPhotos.filter(isImagePath) : [];
+            const person = snapshot.exists() ? snapshot.data() : {};
+            const storedPaths = Array.isArray(person.orbitPhotos) ? person.orbitPhotos.filter(isImagePath) : [];
+            const savedSpeed = Number(person.orbitSpeed);
+            rotationMultiplier = Number.isFinite(savedSpeed) && savedSpeed >= 25 && savedSpeed <= 300 ? savedSpeed / 100 : 1;
             try { localStorage.setItem(cacheKey, JSON.stringify(storedPaths)); } catch (_) { }
+            try { localStorage.setItem(speedCacheKey, String(Math.round(rotationMultiplier * 100))); } catch (_) { }
             applyUniversePaths(storedPaths, qrId);
           } catch (error) {
             if (!cachedPaths.length) applyUniversePaths([], qrId);
@@ -202,17 +211,17 @@
         const width = window.innerWidth;
         const height = window.innerHeight;
         const size = Math.min(width, height);
-        const yaw = elapsedTime * .000055;
+        const yaw = elapsedTime * .000055 * rotationMultiplier;
         const yawCos = Math.cos(yaw);
         const yawSin = Math.sin(yaw);
-        const pitch = Math.sin(elapsedTime * .00018) * .07;
+        const pitch = Math.sin(elapsedTime * .00018 * rotationMultiplier) * .07;
         const pitchCos = Math.cos(pitch);
         const pitchSin = Math.sin(pitch);
         const camera = Math.max(560, height * 1.25);
 
         for (const card of cards) {
           const { layer, layerIndex, start, element } = card;
-          const phase = start + elapsedTime * layer.speed;
+          const phase = start + elapsedTime * layer.speed * rotationMultiplier;
           const radius = size * layer.radius;
           const localX = radius * Math.cos(phase);
           const localY = radius * Math.sin(phase);
