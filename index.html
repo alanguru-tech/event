@@ -433,7 +433,8 @@ body {
                     return;
                 }
                 const person = snapshot.data();
-                document.getElementById('greeting-title').innerHTML = `Ngày Quốc tế<span>${escapeHtml(person.name || 'Nam giới')}</span>`;
+                // Personal QR cards use the recipient's name as the heading; the circled generic title is omitted.
+                document.getElementById('greeting-title').innerHTML = `<span>${escapeHtml(person.name || 'Nam giới')}</span>`;
                 const recipientName = person.name || 'bạn';
                 document.getElementById('greeting-message').textContent = (person.message || 'Chúc bạn luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được thật nhiều yêu thương mỗi ngày.').replaceAll('{{name}}', recipientName);
                 document.getElementById('greeting-extra').textContent = (person.extra || 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.').replaceAll('{{name}}', recipientName);
@@ -818,7 +819,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html' + (universeId ? `?id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=10' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
