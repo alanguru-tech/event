@@ -259,13 +259,14 @@
             font-weight: 500
         }
 
-        .music-controls { margin: 14px auto 0; }
-        .music-toggle, .music-close { padding: 8px 14px; border: 1px solid #f6cd7866; border-radius: 999px; color: var(--gold); background: #07152688; font: inherit; font-size: 13px; cursor: pointer; }
-        .music-panel { width: min(100%, 320px); margin: 12px auto 0; padding: 10px; border: 1px solid #f6cd7855; border-radius: 14px; background: #071526e8; }
-        .music-panel[hidden], .music-controls[hidden] { display: none !important; }
-        .music-note { margin: 0 0 8px; color: #c8d4e2; font-size: 12px; }
-        .music-frame { display: block; width: 100%; height: 200px; border: 0; border-radius: 8px; background: #000; }
-        .music-close { margin-top: 8px; }
+        .music-toggle { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); z-index: 20; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border: 1px solid #f6cd78a8; border-radius: 50%; color: #071526; background: var(--gold); box-shadow: 0 8px 26px #0008, 0 0 18px #f6cd7838; font: 700 24px/1 Arial, sans-serif; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+        .music-toggle:hover { transform: scale(1.07); }
+        .music-toggle[hidden], #youtube-player-host[hidden] { display: none !important; }
+        .music-toggle[data-playing="true"] { color: var(--gold); background: #102235; animation: music-pulse 1.8s ease-in-out infinite; }
+        .music-toggle[data-blocked="true"]::after { content: ""; position: absolute; inset: -5px; border: 1px solid #f6cd7870; border-radius: 50%; }
+        @keyframes music-pulse { 50% { box-shadow: 0 8px 26px #0008, 0 0 23px #f6cd7870; } }
+        /* Hidden YouTube player provides audio only; the visual player is never shown. */
+        #youtube-player-host { position: fixed; left: -10000px; top: 0; width: 200px; height: 200px; overflow: hidden; opacity: .01; pointer-events: none; }
 
         .person-photo-wrap {
             width: min(180px, 42vw);
@@ -426,16 +427,10 @@ body {
         <div class="divider"></div>
         <div class="signature-line" id="greeting-extra">Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.</div>
         <div class="signature">Gửi lời chúc chân thành đến <strong>một nửa tuyệt vời của thế giới</strong></div>
-        <section class="music-controls" id="music-controls" hidden aria-label="Nhạc nền lời chúc">
-            <button class="music-toggle" id="music-toggle" type="button" aria-expanded="false">♫ Mở trình phát nhạc</button>
-            <div class="music-panel" id="music-panel" hidden>
-                <p class="music-note">Nhấn nút phát trong trình YouTube để nghe nhạc.</p>
-                <div id="youtube-player"></div>
-                <button class="music-close" id="music-close" type="button">Tạm dừng và thu gọn</button>
-            </div>
-        </section>
         <p id="greeting-error" role="status" hidden style="margin:22px 0 0;color:#ffd0c4"></p>
     </main>
+    <div id="youtube-player-host" aria-hidden="true"></div>
+    <button class="music-toggle" id="music-toggle" type="button" hidden data-playing="false" aria-label="Bật nhạc nền" title="Bật nhạc nền">♫</button>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAL8w7SsKAmjF9_Am_RMXCtldk08Daj5Kk",
@@ -513,47 +508,80 @@ body {
 
         function setupGreetingMusic(videoId, savedVolume) {
             if (typeof videoId !== 'string' || !/^[\w-]{11}$/.test(videoId)) return;
-            const controls = document.getElementById('music-controls');
             const toggle = document.getElementById('music-toggle');
-            const panel = document.getElementById('music-panel');
-            const playerHost = document.getElementById('youtube-player');
+            const host = document.getElementById('youtube-player-host');
             const parsedVolume = Number(savedVolume);
             const volume = Number.isFinite(parsedVolume) ? Math.max(0, Math.min(100, Math.round(parsedVolume))) : 50;
-            controls.hidden = false;
-            let playerFrame;
-            let volumeRetry;
-            const sendPlayerCommand = (func, args = []) => {
-                if (!playerFrame?.contentWindow) return;
-                playerFrame.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), 'https://www.youtube.com');
-            };
+            let player = null;
+            let playerReady = false;
+            let startRequested = false;
+            let isPlaying = false;
+            let apiPromise;
+            toggle.hidden = false;
+
+            function setButtonState(playing, blocked = false) {
+                isPlaying = playing;
+                toggle.dataset.playing = String(playing);
+                toggle.dataset.blocked = String(blocked);
+                toggle.setAttribute('aria-label', playing ? 'Tắt nhạc nền' : 'Bật nhạc nền');
+                toggle.title = playing ? 'Tắt nhạc nền' : (blocked ? 'Trình duyệt chặn tự phát — chạm để bật nhạc' : 'Bật nhạc nền');
+            }
+            function startMusic() {
+                startRequested = true;
+                if (!playerReady) return;
+                player.setVolume(volume);
+                player.unMute();
+                player.playVideo();
+            }
+            function loadPlayerApi() {
+                if (window.YT?.Player) return Promise.resolve(window.YT);
+                if (apiPromise) return apiPromise;
+                apiPromise = new Promise(resolve => {
+                    window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+                    if (!document.getElementById('youtube-iframe-api')) {
+                        const script = document.createElement('script');
+                        script.id = 'youtube-iframe-api';
+                        script.src = 'https://www.youtube.com/iframe_api';
+                        script.async = true;
+                        document.head.append(script);
+                    }
+                });
+                return apiPromise;
+            }
+
             toggle.addEventListener('click', () => {
-                const opening = panel.hidden;
-                panel.hidden = !opening;
-                toggle.setAttribute('aria-expanded', String(opening));
-                toggle.textContent = opening ? '♫ Đóng trình phát nhạc' : '♫ Mở trình phát nhạc';
-                if (opening && !playerFrame) {
-                    playerFrame = document.createElement('iframe');
-                    playerFrame.className = 'music-frame';
-                    playerFrame.title = 'Nhạc YouTube dành riêng cho lời chúc này';
-                    playerFrame.allow = 'encrypted-media; picture-in-picture; autoplay';
-                    playerFrame.referrerPolicy = 'strict-origin-when-cross-origin';
-                    playerFrame.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&controls=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-                    playerFrame.addEventListener('load', () => {
-                        let attempts = 0;
-                        clearInterval(volumeRetry);
-                        volumeRetry = setInterval(() => {
-                            sendPlayerCommand('setVolume', [volume]);
-                            if (++attempts >= 12) clearInterval(volumeRetry);
-                        }, 350);
-                    });
-                    playerHost.replaceChildren(playerFrame);
+                if (isPlaying) {
+                    startRequested = false;
+                    player?.pauseVideo();
+                    setButtonState(false);
+                } else {
+                    startMusic();
                 }
             });
-            document.getElementById('music-close').addEventListener('click', () => {
-                sendPlayerCommand('pauseVideo');
-                panel.hidden = true;
-                toggle.setAttribute('aria-expanded', 'false');
-                toggle.textContent = '♫ Mở trình phát nhạc';
+
+            loadPlayerApi().then(YT => {
+                player = new YT.Player(host, {
+                    width: '200', height: '200', videoId,
+                    playerVars: { autoplay: 1, controls: 0, disablekb: 1, enablejsapi: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0, origin: location.origin },
+                    events: {
+                        onReady(event) {
+                            playerReady = true;
+                            event.target.setVolume(volume);
+                            event.target.unMute();
+                            // Attempt audible autoplay. If blocked, the corner button is the gesture fallback.
+                            event.target.playVideo();
+                            if (startRequested) startMusic();
+                        },
+                        onStateChange(event) {
+                            if (event.data === YT.PlayerState.PLAYING) setButtonState(true);
+                            else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setButtonState(false);
+                        },
+                        onAutoplayBlocked() { setButtonState(false, true); }
+                    }
+                });
+            }).catch(error => {
+                console.warn('Không tải được trình phát nhạc YouTube.', error);
+                toggle.title = 'Không tải được nhạc — tải lại trang để thử lại';
             });
         }
 
@@ -877,7 +905,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=16' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=17' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
