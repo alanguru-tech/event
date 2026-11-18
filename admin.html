@@ -38,6 +38,8 @@
       <div class="field full"><label for="person-photo">Ảnh chân dung (đường dẫn GitHub, không bắt buộc)</label><input id="person-photo" type="text" list="git-images" maxlength="240" placeholder="images/1.webp"><datalist id="git-images"></datalist><small class="muted">Ảnh này hiện trong thiệp. Nhập đường dẫn tương đối từ thư mục gốc repo.</small></div>
       <div class="field full"><label for="person-card-opacity">Độ đục nền thiệp: <output id="person-card-opacity-value">72%</output></label><input id="person-card-opacity" type="range" min="0" max="100" step="1" value="72"><small class="muted">0% nền trong suốt · 100% nền đặc. Chữ và ảnh không bị làm mờ.</small></div>
       <div class="field full"><label for="person-orbit-speed">Tốc độ quay ảnh: <output id="person-orbit-speed-value">100%</output></label><input id="person-orbit-speed" type="range" min="25" max="300" step="5" value="100"><small class="muted">100% là tốc độ mặc định · điều chỉnh riêng cho vũ trụ ảnh của QR này.</small></div>
+      <div class="field"><label for="person-youtube-url">Link nhạc YouTube (không bắt buộc)</label><input id="person-youtube-url" type="url" maxlength="500" placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/..."><small class="muted">Người nhận mở trình phát và bấm phát; trình duyệt thường chặn tự phát có tiếng.</small></div>
+      <div class="field"><label for="person-music-volume">Âm lượng nhạc: <output id="person-music-volume-value">50%</output></label><input id="person-music-volume" type="range" min="0" max="100" step="1" value="50"><small class="muted">Mức âm lượng mặc định khi mở trình phát YouTube.</small></div>
       <div class="field full"><label for="person-orbit-photos">Ảnh quỹ đạo riêng của QR này (mỗi dòng một đường dẫn)</label><textarea id="person-orbit-photos" class="orbit-paths" maxlength="24000" placeholder="images/1.webp&#10;images/2.webp&#10;images/3.webp"></textarea><small class="muted">Danh sách này được lưu trong hồ sơ Firestore của QR này. Mỗi mã QR có danh sách ảnh riêng; tối đa 100 ảnh.</small></div>
     </div>
     <div class="actions"><button id="save-person">Lưu hồ sơ và tạo QR</button><button id="refresh-list" class="secondary">Tải lại tủ hồ sơ</button><button id="print-qr" class="secondary">Xuất QR đã chọn · 2 × 2 cm</button></div>
@@ -88,8 +90,10 @@
   const isValidImagePath=path=>/^images\/[^/\\?#]+\.(jpg|jpeg|png|webp)$/i.test(path)&&!path.includes('..');
   const clampOpacity=value=>Math.max(0,Math.min(100,Math.round(Number(value)||0)));
   const clampOrbitSpeed=value=>Math.max(25,Math.min(300,Math.round(Number(value)||100)));
+  const clampMusicVolume=value=>Math.max(0,Math.min(100,Math.round(Number(value)||0)));
   $('person-card-opacity').addEventListener('input',()=>{$('person-card-opacity-value').value=$('person-card-opacity').value+'%'});
   $('person-orbit-speed').addEventListener('input',()=>{$('person-orbit-speed-value').value=$('person-orbit-speed').value+'%'});
+  $('person-music-volume').addEventListener('input',()=>{$('person-music-volume-value').value=$('person-music-volume').value+'%'});
   $('insert-name-token').addEventListener('click',()=>{
     const field=$('person-message'),start=field.selectionStart??field.value.length,end=field.selectionEnd??start;
     field.setRangeText('{{name}}',start,end,'end');field.focus();
@@ -100,6 +104,20 @@
     const invalid=paths.find(path=>!isValidImagePath(path));
     if(invalid)throw new Error(`Đường dẫn chưa hợp lệ: ${invalid}. Dùng dạng images/tên-tệp.webp.`);
     return paths;
+  }
+  function readYoutubeVideoId(value){
+    if(!value.trim())return '';
+    let url;try{url=new URL(value.trim())}catch(_){throw new Error('Link YouTube chưa hợp lệ.')}
+    const host=url.hostname.toLowerCase().replace(/^www\./,'');
+    if(host==='youtu.be'){
+      const shortId=url.pathname.split('/').filter(Boolean)[0]||'';
+      if(!/^[\w-]{11}$/.test(shortId))throw new Error('Không đọc được mã video từ link YouTube.');
+      return shortId;
+    }
+    if(host!=='youtube.com'&&host!=='m.youtube.com'&&host!=='music.youtube.com')throw new Error('Chỉ nhập link youtube.com hoặc youtu.be.');
+    const match=url.searchParams.get('v')||url.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{11})/)?.[1];
+    if(!match||!/^[\w-]{11}$/.test(match))throw new Error('Không đọc được mã video từ link YouTube.');
+    return match;
   }
 
   $('save-person').addEventListener('click',async()=>{
@@ -112,10 +130,12 @@
       const photoPath=$('person-photo').value.trim();
       if(photoPath&&!isValidImagePath(photoPath))throw new Error('Đường dẫn ảnh cần có dạng images/tên-tệp.webp và không chứa thư mục khác.');
       const orbitPhotos=readOrbitPaths($('person-orbit-photos'));
+      const youtubeVideoId=readYoutubeVideoId($('person-youtube-url').value);
+      const musicVolume=clampMusicVolume($('person-music-volume').value);
       const code=makeCode();
-      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,orbitPhotos,cardOpacity:clampOpacity($('person-card-opacity').value),orbitSpeed:clampOrbitSpeed($('person-orbit-speed').value),createdAt:serverTimestamp(),createdBy:user.uid};
+      const record={name,title:$('person-title').value.trim(),message,extra:$('person-extra').value.trim(),photoPath,orbitPhotos,cardOpacity:clampOpacity($('person-card-opacity').value),orbitSpeed:clampOrbitSpeed($('person-orbit-speed').value),youtubeVideoId,musicVolume,createdAt:serverTimestamp(),createdBy:user.uid};
       await setDoc(doc(db,'greetings',code),record);
-      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';$('person-orbit-photos').value='';$('person-card-opacity').value='72';$('person-card-opacity-value').value='72%';$('person-orbit-speed').value='100';$('person-orbit-speed-value').value='100%';
+      $('person-name').value='';$('person-message').value='';$('person-extra').value='';$('person-photo').value='';$('person-orbit-photos').value='';$('person-youtube-url').value='';$('person-card-opacity').value='72';$('person-card-opacity-value').value='72%';$('person-orbit-speed').value='100';$('person-orbit-speed-value').value='100%';$('person-music-volume').value='50';$('person-music-volume-value').value='50%';
       say('Đã lưu hồ sơ. QR mới xuất hiện trong tủ hồ sơ bên dưới.');
       await loadCabinet(code);
     }catch(e){console.error(e);say('Không lưu được: '+(e.code==='permission-denied'?'tài khoản này chưa được cấp quyền trong Firestore Rules.':e.message))}
@@ -186,19 +206,28 @@
         const speedValue=document.createElement('output');speedValue.value=`${clampOrbitSpeed(person.orbitSpeed??100)}%`;speedTitle.append(speedValue);
         const speedEditor=document.createElement('input');speedEditor.type='range';speedEditor.min='25';speedEditor.max='300';speedEditor.step='5';speedEditor.value=String(clampOrbitSpeed(person.orbitSpeed??100));
         speedEditor.addEventListener('input',()=>{speedValue.value=speedEditor.value+'%'});speedLabel.append(speedTitle,speedEditor);
-        const orbitSave=document.createElement('button');orbitSave.className='secondary';orbitSave.type='button';orbitSave.textContent='Lưu ảnh, độ đục và tốc độ';
+        const musicLabel=document.createElement('label');musicLabel.className='field';musicLabel.textContent='Link nhạc YouTube';
+        const musicEditor=document.createElement('input');musicEditor.type='url';musicEditor.maxLength=500;musicEditor.placeholder='https://youtu.be/VIDEO_ID';musicEditor.value=person.youtubeVideoId?`https://youtu.be/${person.youtubeVideoId}`:'';musicLabel.append(musicEditor);
+        const volumeLabel=document.createElement('label');volumeLabel.className='field';
+        const volumeTitle=document.createElement('span');volumeTitle.textContent='Âm lượng nhạc: ';
+        const volumeValue=document.createElement('output');volumeValue.value=`${clampMusicVolume(person.musicVolume??50)}%`;volumeTitle.append(volumeValue);
+        const volumeEditor=document.createElement('input');volumeEditor.type='range';volumeEditor.min='0';volumeEditor.max='100';volumeEditor.step='1';volumeEditor.value=String(clampMusicVolume(person.musicVolume??50));
+        volumeEditor.addEventListener('input',()=>{volumeValue.value=volumeEditor.value+'%'});volumeLabel.append(volumeTitle,volumeEditor);
+        const orbitSave=document.createElement('button');orbitSave.className='secondary';orbitSave.type='button';orbitSave.textContent='Lưu ảnh, độ đục, tốc độ và nhạc';
         orbitSave.addEventListener('click',async()=>{
           try{
             const paths=readOrbitPaths(orbitEditor);orbitSave.disabled=true;
             const cardOpacity=clampOpacity(opacityEditor.value);
             const orbitSpeed=clampOrbitSpeed(speedEditor.value);
-            await updateDoc(doc(db,'greetings',item.id),{orbitPhotos:paths,cardOpacity,orbitSpeed});
-            say(`Đã lưu ${paths.length} ảnh, độ đục ${cardOpacity}% và tốc độ ${orbitSpeed}% cho ${person.name||'QR này'}.`);
-          }catch(e){say('Không lưu được danh sách ảnh: '+e.message)}
+            const youtubeVideoId=readYoutubeVideoId(musicEditor.value);
+            const musicVolume=clampMusicVolume(volumeEditor.value);
+            await updateDoc(doc(db,'greetings',item.id),{orbitPhotos:paths,cardOpacity,orbitSpeed,youtubeVideoId,musicVolume});
+            say(`Đã lưu ${paths.length} ảnh, độ đục ${cardOpacity}%, tốc độ ${orbitSpeed}% và nhạc ${youtubeVideoId?'YouTube':'đã tắt'} cho ${person.name||'QR này'}.`);
+          }catch(e){say('Không lưu được hồ sơ: '+e.message)}
           finally{orbitSave.disabled=false}
         });
         orbitLabel.append(orbitEditor);const orbitActions=document.createElement('div');orbitActions.className='actions';orbitActions.append(orbitSave);
-        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap,opacityLabel,speedLabel,orbitLabel,orbitActions);results.append(card);
+        qrWrap.append(qr,url,copy,revoke);card.append(personHead,message,qrWrap,opacityLabel,speedLabel,musicLabel,volumeLabel,orbitLabel,orbitActions);results.append(card);
         if(window.QRCode){
           new QRCode(qr,{text:link.href,width:180,height:180,correctLevel:QRCode.CorrectLevel.H});
           const logo=document.createElement('div');logo.className='qr-logo-disc';const mark=document.createElement('img');mark.className='qr-logo-mark';mark.src='./icon-qr.png';mark.alt='Logo AG';mark.draggable=false;logo.append(mark);
