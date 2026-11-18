@@ -349,6 +349,38 @@ body {
                 line-height: 1.5;
                 margin-top: 9px
             }
+
+            body.personal-view {
+                place-items: end center;
+                padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+            }
+
+            body.personal-view main {
+                width: min(76vw, 320px);
+                max-height: 66svh;
+                margin: 0;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: 13px 13px 11px;
+                border-radius: 18px;
+                scrollbar-width: none;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+            }
+
+            body.personal-view main::-webkit-scrollbar { display: none; }
+            body.personal-view .badge { font-size: 8px; padding: 6px 9px; }
+            body.personal-view h1 { font-size: clamp(21px, 6vw, 29px); line-height: 1.06; }
+            body.personal-view .person-photo-wrap { margin: 7px auto 5px; }
+            body.personal-view .person-photo {
+                max-width: min(100%, 100px);
+                max-height: 12svh;
+                border-radius: 10px;
+            }
+            body.personal-view .message { margin-top: 9px; font-size: 12px; line-height: 1.42; }
+            body.personal-view .divider { margin: 10px auto 8px; }
+            body.personal-view .signature-line { margin-top: 8px; font-size: 10px; line-height: 1.35; }
+            body.personal-view .signature { margin-top: 7px; font-size: 8px; line-height: 1.35; }
         }
 
         @media(max-height:650px) and (min-width:601px) {
@@ -395,6 +427,11 @@ body {
             max-height: 34vh;
             aspect-ratio: auto;
             object-fit: contain
+        }
+
+        @media(max-width:600px) {
+            body.personal-view .person-photo-wrap { margin: 7px auto 5px; }
+            body.personal-view .person-photo { max-width: min(100%, 100px); max-height: 12svh; border-radius: 10px; }
         }
 
         @media(prefers-reduced-motion:reduce) {
@@ -905,7 +942,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=17' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=18' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
