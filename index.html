@@ -267,6 +267,22 @@
         @keyframes music-pulse { 50% { box-shadow: 0 8px 26px #0008, 0 0 23px #f6cd7870; } }
         /* Hidden YouTube player provides audio only; the visual player is never shown. */
         #youtube-player-host { position: fixed; left: -10000px; top: 0; width: 200px; height: 200px; overflow: hidden; opacity: .01; pointer-events: none; }
+        body.personal-loading main { opacity: 0 !important; visibility: hidden !important; }
+        body.letter-mode .universe-background { pointer-events: auto; }
+        body.letter-mode.letter-closed main { opacity: 0 !important; visibility: hidden !important; transform: translateY(14px) scale(.98); pointer-events: none; }
+        body.letter-mode main { color: #283449; border-color: #d3b974; background: linear-gradient(145deg, #fff9e9, #efe1c0); box-shadow: 0 22px 80px #000a, inset 0 0 0 5px #ffffff70; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+        body.letter-mode .badge { color: #876022; border-color: #b9924c; }
+        body.letter-mode h1, body.letter-mode .signature-line { color: #34415a; }
+        body.letter-mode .message { color: #3f4b61; }
+        body.letter-mode .signature { color: #617089; }
+        body.letter-mode .signature strong { color: #956b23; }
+        body.letter-mode h1 span { color: #956b23; }
+        body.letter-mode .message, body.letter-mode .signature-line, body.letter-mode .letter-salutation { text-align: var(--letter-align, left); white-space: pre-line; }
+        .letter-salutation { display: none; margin: 22px 0 0; color: #34415a; font-weight: 700; }
+        body.letter-mode .letter-salutation { display: block; }
+        .letter-hint { display: none; position: fixed; z-index: 2; top: calc(50% + min(18vmin, 180px)); left: 50%; transform: translateX(-50%); width: max-content; max-width: 90vw; color: #f6cd78; font-size: 14px; letter-spacing: .04em; text-align: center; text-shadow: 0 2px 12px #000; pointer-events: none; }
+        body.letter-mode.letter-closed .letter-hint { display: block; }
+        .letter-close { position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; padding: 0; border: 1px solid #9b794659; border-radius: 50%; color: #5a4830; background: #fffdf6aa; font: 24px/1 Arial, sans-serif; cursor: pointer; }
 
         .person-photo-wrap {
             width: min(180px, 42vw);
@@ -383,6 +399,10 @@ body {
             body.personal-view .signature { margin-top: 7px; font-size: 8px; line-height: 1.35; }
         }
 
+        @media(max-width:600px) {
+            body.letter-mode main { background: linear-gradient(145deg, #fff9e9, #efe1c0); }
+        }
+
         @media(max-height:650px) and (min-width:601px) {
             body {
                 place-items: start center
@@ -453,11 +473,14 @@ body {
     <div id="photo-wall" class="photo-wall" aria-hidden="true"></div>
 <div class="stars" aria-hidden="true"></div>
     <div class="glow" aria-hidden="true"></div><canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="letter-hint" aria-hidden="true">Chạm vào vùng lỗ đen để mở thư</div>
     <main>
+        <button id="letter-close" class="letter-close" type="button" aria-label="Đóng thư" hidden>×</button>
         <div class="badge">✦ &nbsp; 19 tháng 11 &nbsp; ✦</div>
         <figure id="person-photo-wrap" class="person-photo-wrap" hidden>
             <img id="person-photo" class="person-photo" alt="Ảnh người nhận lời chúc">
         </figure>
+        <p id="letter-salutation" class="letter-salutation"></p>
         <h1 id="greeting-title">Ngày Quốc tế<span>Nam giới</span></h1>
         <p class="message" id="greeting-message">Chúc những người đàn ông luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được
             thật nhiều yêu thương mỗi ngày.</p>
@@ -481,8 +504,9 @@ body {
         async function loadPersonalGreeting() {
             const code = new URLSearchParams(location.search).get('id');
             if (!code) return;
-            document.body.classList.add('personal-view');
+            document.body.classList.add('personal-view', 'personal-loading');
             if (!/^[a-f0-9]{32}$/.test(code)) {
+                document.body.classList.remove('personal-loading');
                 showGreetingError('Mã QR không hợp lệ. Vui lòng quét lại mã được gửi cho bạn.');
                 return;
             }
@@ -494,21 +518,48 @@ body {
                 const app = initializeApp(firebaseConfig);
                 const snapshot = await getDoc(doc(getFirestore(app), 'greetings', code));
                 if (!snapshot.exists()) {
+                    document.body.classList.remove('personal-loading');
                     showGreetingError('Không tìm thấy lời chúc cho mã QR này. Vui lòng liên hệ người gửi.');
                     return;
                 }
                 const person = snapshot.data();
+                const occasion = person.occasion === 'teachers20' ? 'teachers20' : 'men19';
+                const greetingMode = person.greetingMode === 'black-hole-letter' ? 'black-hole-letter' : 'card';
                 const savedOpacity = Number(person.cardOpacity);
                 const opacity = Number.isFinite(savedOpacity) ? Math.max(0, Math.min(100, savedOpacity)) / 100 : 0.72;
                 const greetingCard = document.querySelector('main');
                 greetingCard.style.setProperty('--card-opacity-start', opacity.toFixed(2));
                 greetingCard.style.setProperty('--card-opacity-end', opacity.toFixed(2));
                 greetingCard.style.setProperty('--card-blur', `${(opacity * 12).toFixed(1)}px`);
-                // Personal QR cards use the recipient's name as the heading; the circled generic title is omitted.
-                document.getElementById('greeting-title').innerHTML = `<span>${escapeHtml(person.name || 'Nam giới')}</span>`;
-                const recipientName = person.name || 'bạn';
-                document.getElementById('greeting-message').textContent = (person.message || 'Chúc bạn luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được thật nhiều yêu thương mỗi ngày.').replaceAll('{{name}}', recipientName);
-                document.getElementById('greeting-extra').textContent = (person.extra || 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.').replaceAll('{{name}}', recipientName);
+                const recipientName = person.name || (occasion === 'teachers20' ? 'Thầy/Cô' : 'Nam giới');
+                document.getElementById('greeting-title').innerHTML = occasion === 'teachers20'
+                    ? `Ngày Nhà giáo Việt Nam<span>${escapeHtml(recipientName)}</span>`
+                    : `<span>${escapeHtml(recipientName)}</span>`;
+                const message = document.getElementById('greeting-message');
+                message.textContent = (person.message || (occasion === 'teachers20' ? 'Kính chúc thầy cô luôn mạnh khỏe, hạnh phúc và giữ mãi nhiệt huyết với nghề.' : 'Chúc bạn luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được thật nhiều yêu thương mỗi ngày.')).replaceAll('{{name}}', recipientName);
+                document.getElementById('greeting-extra').textContent = (person.extra || (occasion === 'teachers20' ? 'Trân trọng cảm ơn thầy cô đã tận tâm dìu dắt chúng em.' : 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.')).replaceAll('{{name}}', recipientName);
+                const signature = document.querySelector('.signature');
+                signature.firstChild.textContent = occasion === 'teachers20' ? 'Xin gửi lời tri ân đến ' : 'Gửi lời chúc chân thành đến ';
+                signature.querySelector('strong').textContent = occasion === 'teachers20' ? 'những người lái đò thầm lặng' : 'một nửa tuyệt vời của thế giới';
+                const defaultTitle = occasion === 'teachers20' ? '✦ 20 tháng 11 ✦' : '✦ 19 tháng 11 ✦';
+                document.querySelector('.badge').textContent = person.title || defaultTitle;
+                if (greetingMode === 'black-hole-letter') {
+                    document.body.classList.add('letter-mode', 'letter-closed');
+                    document.body.style.setProperty('--letter-align', ['left','justify','center','right'].includes(person.letterAlign) ? person.letterAlign : 'left');
+                    const salutation = document.getElementById('letter-salutation');
+                    salutation.textContent = `Kính gửi ${recipientName},`;
+                    const closeLetter = document.getElementById('letter-close');
+                    closeLetter.hidden = false;
+                    closeLetter.addEventListener('click', () => document.body.classList.add('letter-closed'));
+                    const universeUrl = new URL('./preview-vu-tru-lo-den.html', location.href);
+                    universeUrl.searchParams.set('v', '21');
+                    universeUrl.searchParams.set('id', code);
+                    universeUrl.searchParams.set('mode', 'letter');
+                    document.getElementById('universe-background').src = universeUrl.href;
+                    document.body.classList.remove('personal-loading');
+                } else {
+                    document.body.classList.remove('personal-loading');
+                }
                 if (person.photoPath && isGitImagePath(person.photoPath)) {
                     const photo = document.getElementById('person-photo');
                     const photoWrap = document.getElementById('person-photo-wrap');
@@ -520,11 +571,11 @@ body {
                     };
                     photo.src = './' + person.photoPath.split('/').map(encodeURIComponent).join('/');
                 }
-                if (person.title) document.querySelector('.badge').textContent = person.title;
                 setupGreetingMusic(person.youtubeVideoId, person.musicVolume);
                 document.title = `Lời chúc dành cho ${person.name || 'bạn'}`;
             } catch (error) {
                 console.error('Không tải được lời chúc cá nhân.', error);
+                document.body.classList.remove('personal-loading');
                 showGreetingError('Chưa kết nối được kho lời chúc. Hãy kiểm tra mạng rồi tải lại trang.');
             }
         }
@@ -552,6 +603,7 @@ body {
             let player = null;
             let playerReady = false;
             let startRequested = false;
+            let musicEnabled = true;
             let isPlaying = false;
             let apiPromise;
             toggle.hidden = false;
@@ -564,6 +616,7 @@ body {
                 toggle.title = playing ? 'Tắt nhạc nền' : (blocked ? 'Trình duyệt chặn tự phát — chạm để bật nhạc' : 'Bật nhạc nền');
             }
             function startMusic() {
+                musicEnabled = true;
                 startRequested = true;
                 if (!playerReady) return;
                 player.setVolume(volume);
@@ -588,6 +641,7 @@ body {
 
             toggle.addEventListener('click', () => {
                 if (isPlaying) {
+                    musicEnabled = false;
                     startRequested = false;
                     player?.pauseVideo();
                     setButtonState(false);
@@ -599,7 +653,7 @@ body {
             loadPlayerApi().then(YT => {
                 player = new YT.Player(host, {
                     width: '200', height: '200', videoId,
-                    playerVars: { autoplay: 1, controls: 0, disablekb: 1, enablejsapi: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0, origin: location.origin },
+                    playerVars: { autoplay: 1, controls: 0, disablekb: 1, enablejsapi: 1, fs: 0, iv_load_policy: 3, loop: 1, playlist: videoId, playsinline: 1, rel: 0, origin: location.origin },
                     events: {
                         onReady(event) {
                             playerReady = true;
@@ -611,9 +665,13 @@ body {
                         },
                         onStateChange(event) {
                             if (event.data === YT.PlayerState.PLAYING) setButtonState(true);
+                            else if (event.data === YT.PlayerState.ENDED && musicEnabled) {
+                                event.target.seekTo(0, true);
+                                event.target.playVideo();
+                            }
                             else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setButtonState(false);
                         },
-                        onAutoplayBlocked() { setButtonState(false, true); }
+                        onAutoplayBlocked() { musicEnabled = false; setButtonState(false, true); }
                     }
                 });
             }).catch(error => {
@@ -942,7 +1000,13 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=18' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=21' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        addEventListener('message', event => {
+            if (event.origin !== location.origin || event.source !== universeFrame.contentWindow) return;
+            if (event.data?.type === 'open-letter' && document.body.classList.contains('letter-mode')) {
+                document.body.classList.remove('letter-closed');
+            }
+        });
         document.body.classList.add('revealed');
         startCelebration();
         loadPersonalGreeting();
