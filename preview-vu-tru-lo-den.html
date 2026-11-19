@@ -19,6 +19,9 @@
     /* background.svg is the supplied black-hole illustration; photo cards are the only added layer. */
     .space { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; isolation: isolate; perspective: 1300px; perspective-origin: 50% 50%; transform-style: preserve-3d; background: #02040a url("./background.svg") center / cover no-repeat; }
     .photos { transform-style: preserve-3d; }
+    .black-hole-trigger { position: fixed; z-index: 10; left: 50%; top: 50%; width: clamp(150px, 27vmin, 340px); aspect-ratio: 1; padding: 0; transform: translate(-50%, -50%); border: 0; border-radius: 50%; background: transparent; cursor: pointer; pointer-events: auto; }
+    .black-hole-trigger:focus-visible { outline: 2px solid #f6cd78; outline-offset: 4px; }
+    .black-hole-trigger[hidden] { display: none; }
     .photo-card {
       position: absolute; left: 50%; top: 50%; width: clamp(58px, 8.4vmin, 112px);
       aspect-ratio: 1.18; overflow: hidden; border: 1px solid #d8e5ffb0;
@@ -50,6 +53,7 @@
 <body>
   <main class="space" aria-label="Nền vũ trụ ảnh 3D">
     <div class="photos" id="photos" aria-hidden="true"></div>
+    <button id="black-hole-trigger" class="black-hole-trigger" type="button" aria-label="Chạm lỗ đen để mở bức thư" hidden></button>
   </main>
 
   <script>
@@ -61,6 +65,13 @@
         { radius: .52, count: compact ? 7 : 9, speed: .000047, tiltX: 72, tiltY: -28, phase: 2.0 }
       ];
       const host = document.getElementById('photos');
+      const blackHoleTrigger = document.getElementById('black-hole-trigger');
+      if (new URLSearchParams(location.search).get('mode') === 'letter') {
+        blackHoleTrigger.hidden = false;
+        blackHoleTrigger.addEventListener('click', () => {
+          parent.postMessage({ type: 'open-letter' }, location.origin);
+        });
+      }
       let photoPaths = [];
       let cards = [];
       let rotationMultiplier = 1;
