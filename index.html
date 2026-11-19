@@ -278,6 +278,9 @@
         body.letter-mode .signature strong { color: #956b23; }
         body.letter-mode h1 span { color: #956b23; }
         body.letter-mode .message, body.letter-mode .signature-line, body.letter-mode .letter-salutation { text-align: var(--letter-align, left); white-space: pre-line; }
+        body.letter-mode #greeting-title, body.letter-mode .signature { display: none; }
+        body.letter-mode:not(.has-letter-extra) .signature-line, body.letter-mode:not(.has-letter-extra) .divider { display: none; }
+        .letter-mode .message p, .letter-mode .message div { margin: 0 0 .7em; }
         .letter-salutation { display: none; margin: 22px 0 0; color: #34415a; font-weight: 700; }
         body.letter-mode .letter-salutation { display: block; }
         .letter-hint { display: none; position: fixed; z-index: 2; top: calc(50% + min(18vmin, 180px)); left: 50%; transform: translateX(-50%); width: max-content; max-width: 90vw; color: #f6cd78; font-size: 14px; letter-spacing: .04em; text-align: center; text-shadow: 0 2px 12px #000; pointer-events: none; }
@@ -482,8 +485,8 @@ body {
         </figure>
         <p id="letter-salutation" class="letter-salutation"></p>
         <h1 id="greeting-title">Ngày Quốc tế<span>Nam giới</span></h1>
-        <p class="message" id="greeting-message">Chúc những người đàn ông luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được
-            thật nhiều yêu thương mỗi ngày.</p>
+        <div class="message" id="greeting-message">Chúc những người đàn ông luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được
+            thật nhiều yêu thương mỗi ngày.</div>
         <div class="divider"></div>
         <div class="signature-line" id="greeting-extra">Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.</div>
         <div class="signature">Gửi lời chúc chân thành đến <strong>một nửa tuyệt vời của thế giới</strong></div>
@@ -536,8 +539,18 @@ body {
                     ? `Ngày Nhà giáo Việt Nam<span>${escapeHtml(recipientName)}</span>`
                     : `<span>${escapeHtml(recipientName)}</span>`;
                 const message = document.getElementById('greeting-message');
-                message.textContent = (person.message || (occasion === 'teachers20' ? 'Kính chúc thầy cô luôn mạnh khỏe, hạnh phúc và giữ mãi nhiệt huyết với nghề.' : 'Chúc bạn luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được thật nhiều yêu thương mỗi ngày.')).replaceAll('{{name}}', recipientName);
-                document.getElementById('greeting-extra').textContent = (person.extra || (occasion === 'teachers20' ? 'Trân trọng cảm ơn thầy cô đã tận tâm dìu dắt chúng em.' : 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.')).replaceAll('{{name}}', recipientName);
+                const defaultMessage = occasion === 'teachers20' ? 'Kính chúc thầy cô luôn mạnh khỏe, hạnh phúc và giữ mãi nhiệt huyết với nghề.' : 'Chúc bạn luôn mạnh khỏe, bình an, tự tin theo đuổi điều mình yêu và nhận được thật nhiều yêu thương mỗi ngày.';
+                renderGreetingHtml(message, person.message || defaultMessage, recipientName);
+                const extraText = String(person.extra || '').trim();
+                const extraLine = document.getElementById('greeting-extra');
+                if (extraText || greetingMode !== 'black-hole-letter') {
+                    const defaultExtra = occasion === 'teachers20' ? 'Trân trọng cảm ơn thầy cô đã tận tâm dìu dắt chúng em.' : 'Hôm nay là dịp để nói lời cảm ơn và trân trọng bạn.';
+                    extraLine.textContent = (extraText || defaultExtra).replaceAll('{{name}}', recipientName);
+                    document.body.classList.add('has-letter-extra');
+                } else {
+                    extraLine.textContent = '';
+                    document.body.classList.remove('has-letter-extra');
+                }
                 const signature = document.querySelector('.signature');
                 signature.firstChild.textContent = occasion === 'teachers20' ? 'Xin gửi lời tri ân đến ' : 'Gửi lời chúc chân thành đến ';
                 signature.querySelector('strong').textContent = occasion === 'teachers20' ? 'những người lái đò thầm lặng' : 'một nửa tuyệt vời của thế giới';
@@ -547,12 +560,12 @@ body {
                     document.body.classList.add('letter-mode', 'letter-closed');
                     document.body.style.setProperty('--letter-align', ['left','justify','center','right'].includes(person.letterAlign) ? person.letterAlign : 'left');
                     const salutation = document.getElementById('letter-salutation');
-                    salutation.textContent = `Kính gửi ${recipientName},`;
+                    salutation.textContent = occasion === 'teachers20' ? `Kính gửi ${recipientName},` : `Thân gửi ${recipientName},`;
                     const closeLetter = document.getElementById('letter-close');
                     closeLetter.hidden = false;
                     closeLetter.addEventListener('click', () => document.body.classList.add('letter-closed'));
                     const universeUrl = new URL('./preview-vu-tru-lo-den.html', location.href);
-                    universeUrl.searchParams.set('v', '21');
+                    universeUrl.searchParams.set('v', '23');
                     universeUrl.searchParams.set('id', code);
                     universeUrl.searchParams.set('mode', 'letter');
                     document.getElementById('universe-background').src = universeUrl.href;
@@ -582,6 +595,51 @@ body {
 
         function escapeHtml(value) {
             return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        }
+
+        function renderGreetingHtml(target, value, recipientName) {
+            const allowedTags = new Set(['P', 'DIV', 'BR', 'SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'SUB', 'SUP', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'BLOCKQUOTE', 'FONT']);
+            const blockedTags = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'SVG', 'FORM', 'INPUT', 'IMG', 'VIDEO', 'AUDIO']);
+            const parsed = new DOMParser().parseFromString(String(value), 'text/html');
+            const clean = document.createDocumentFragment();
+            const safeColor = color => /^(#[\da-f]{3,8}|(?:rgb|hsl)a?\([\d.%\s,+-]+\)|[a-z]{3,20})$/i.test(color.trim());
+            const appendClean = (source, destination) => {
+                for (const child of source.childNodes) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        destination.append(document.createTextNode(child.nodeValue || ''));
+                        continue;
+                    }
+                    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+                    if (blockedTags.has(child.tagName)) continue;
+                    if (!allowedTags.has(child.tagName)) {
+                        appendClean(child, destination);
+                        continue;
+                    }
+                    const element = document.createElement(child.tagName.toLowerCase());
+                    const styles = [];
+                    const family = child.style?.fontFamily || (child.tagName === 'FONT' ? child.getAttribute('face') : '');
+                    if (family && /^[\w\s,'"-]{1,120}$/.test(family)) styles.push(`font-family:${family}`);
+                    const size = child.style?.fontSize || (child.tagName === 'FONT' ? ({'1':'10px','2':'13px','3':'16px','4':'18px','5':'24px','6':'32px','7':'48px'}[child.getAttribute('size')] || '') : '');
+                    if (size && /^(?:\d+(?:\.\d+)?)(?:px|pt|em|rem|%)$/i.test(size.trim())) styles.push(`font-size:${size.trim()}`);
+                    const weight = child.style?.fontWeight;
+                    if (/^(normal|bold|bolder|lighter|[1-9]00)$/i.test(weight || '')) styles.push(`font-weight:${weight}`);
+                    const fontStyle = child.style?.fontStyle;
+                    if (/^(normal|italic|oblique)$/i.test(fontStyle || '')) styles.push(`font-style:${fontStyle}`);
+                    const decoration = child.style?.textDecorationLine || child.style?.textDecoration;
+                    if (/^(none|underline|line-through|overline)$/i.test(decoration || '')) styles.push(`text-decoration:${decoration}`);
+                    const alignment = child.style?.textAlign;
+                    if (/^(left|right|center|justify)$/i.test(alignment || '')) styles.push(`text-align:${alignment}`);
+                    const color = child.style?.color || (child.tagName === 'FONT' ? child.getAttribute('color') : '');
+                    if (color && safeColor(color)) styles.push(`color:${color}`);
+                    if (styles.length) element.setAttribute('style', styles.join(';'));
+                    appendClean(child, element);
+                    destination.append(element);
+                }
+            };
+            appendClean(parsed.body, clean);
+            target.replaceChildren(clean);
+            const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) walker.currentNode.nodeValue = walker.currentNode.nodeValue.replaceAll('{{name}}', recipientName);
         }
 
         function showGreetingError(message) {
@@ -1000,7 +1058,7 @@ body {
         animateConfetti();
         const universeFrame = document.getElementById('universe-background');
         const universeId = new URLSearchParams(location.search).get('id');
-        universeFrame.src = './preview-vu-tru-lo-den.html?v=21' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
+        universeFrame.src = './preview-vu-tru-lo-den.html?v=23' + (universeId ? `&id=${encodeURIComponent(universeId)}` : '');
         addEventListener('message', event => {
             if (event.origin !== location.origin || event.source !== universeFrame.contentWindow) return;
             if (event.data?.type === 'open-letter' && document.body.classList.contains('letter-mode')) {
